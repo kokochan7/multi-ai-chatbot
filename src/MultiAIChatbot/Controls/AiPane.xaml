@@ -24,7 +24,7 @@
                                 ToolTip="Open this page in your web browser" Click="OpenExternal_Click"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <Border x:Name="Badge" Width="22" Height="22" CornerRadius="5" Margin="0,0,9,0">
+                        <Border x:Name="BadgeBorder" Width="22" Height="22" CornerRadius="5" Margin="0,0,9,0">
                             <TextBlock x:Name="BadgeText" Foreground="White" FontWeight="Bold" FontSize="12"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>

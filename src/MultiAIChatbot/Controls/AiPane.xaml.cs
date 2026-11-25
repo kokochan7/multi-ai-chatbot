@@ -22,7 +22,7 @@ public partial class AiPane : UserControl
 
     public static readonly DependencyProperty AccentProperty =
         DependencyProperty.Register(nameof(Accent), typeof(Brush), typeof(AiPane),
-            new PropertyMetadata(Brushes.Gray, (d, e) => ((AiPane)d).Badge.Background = (Brush)e.NewValue));
+            new PropertyMetadata(Brushes.Gray, (d, e) => ((AiPane)d).BadgeBorder.Background = (Brush)e.NewValue));
 
     public static readonly DependencyProperty HomeUrlProperty =
         DependencyProperty.Register(nameof(HomeUrl), typeof(string), typeof(AiPane), new PropertyMetadata(""));

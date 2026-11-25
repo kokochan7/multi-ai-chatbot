@@ -204,7 +204,8 @@ public partial class ChatView : UserControl
         PromptBox.Focus();
     }
 
-    private void NewChat_Click(object sender, RoutedEventArgs e)
+    /// <summary>Opens a fresh chat on every AI site (the New Chat button in the left menu).</summary>
+    public void StartNewChat()
     {
         foreach (var pane in AllPanes) pane.GoHome();
         PromptBox.Focus();

@@ -22,7 +22,7 @@ Log in to ChatGPT, Claude and Gemini once, inside their columns. Your logins are
 
 ## Asking all three
 
-Type in the box at the bottom and press **Enter** (Shift+Enter adds a new line). The app types your question into ChatGPT, Claude and Gemini and presses Send on each. Each column shows a short status ("Sent", or what went wrong). The **+** button starts a new chat on all three sites.
+Type in the box at the bottom and press **Enter** (Shift+Enter adds a new line). The app types your question into ChatGPT, Claude and Gemini and presses Send on each. Each column shows a short status ("Sent", or what went wrong). The **New Chat** button at the top of the left menu starts a new chat on all three sites.
 
 Drag a column by its header bar to move it, and drag the gaps between columns (or the edge of the left menu) to resize them. The app remembers the order and sizes. Your past questions are listed under Recent in the left menu, with a search box and Clear all; click one to see all its answers on the History page.
 

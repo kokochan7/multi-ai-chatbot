@@ -51,10 +51,7 @@
                             </ControlTemplate>
                         </Button.Template>
                     </Button>
-                    <Button DockPanel.Dock="Left" Style="{StaticResource IconButton}" Content="&#xE710;"
-                            Width="40" Height="40" FontSize="16" Margin="0,0,6,0" VerticalAlignment="Bottom"
-                            ToolTip="New chat on all sites" Click="NewChat_Click"/>
-                    <Grid Margin="4,0,12,0">
+                    <Grid Margin="10,0,12,0">
                         <TextBox x:Name="PromptBox" BorderThickness="0" Background="Transparent" Padding="0"
                                  FontSize="15" VerticalContentAlignment="Center" MinHeight="40" MaxHeight="180"
                                  TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto"

@@ -14,6 +14,7 @@ public static class PromptSender
 {
     private static readonly string InsertScript = LoadScript("insert-prompt.js");
     private static readonly string ClickScript = LoadScript("click-send.js");
+    private static readonly string ReadScript = LoadScript("read-answer.js");
 
     private static readonly JsonSerializerOptions CamelCase = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
@@ -49,6 +50,71 @@ public static class PromptSender
         {
             return SendResult.Error;
         }
+    }
+
+    /// <summary>How many answers are on the page right now (call before sending).</summary>
+    public static async Task<int> CountAnswersAsync(CoreWebView2 core, SiteSelectors site)
+    {
+        try
+        {
+            return (await ReadAsync(core, site)).Count;
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+
+    /// <summary>
+    /// Waits for a new answer to appear and finish (its text stops changing),
+    /// then returns its text. Returns "" if nothing arrives within the time limit.
+    /// </summary>
+    public static async Task<string> WaitForAnswerAsync(CoreWebView2 core, SiteSelectors site, int countBefore,
+        TimeSpan? timeout = null)
+    {
+        var deadline = DateTime.UtcNow + (timeout ?? TimeSpan.FromMinutes(4));
+        var lastText = "";
+        var stableSince = DateTime.UtcNow;
+
+        while (DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(1000);
+            AnswerSnapshot snap;
+            try
+            {
+                snap = await ReadAsync(core, site);
+            }
+            catch
+            {
+                continue;   // The page may be navigating.
+            }
+
+            if (snap.Count <= countBefore || snap.Text.Length == 0) continue;
+
+            if (snap.Text != lastText)
+            {
+                lastText = snap.Text;
+                stableSince = DateTime.UtcNow;
+            }
+            else if (!snap.Streaming && DateTime.UtcNow - stableSince > TimeSpan.FromSeconds(3))
+            {
+                return lastText;
+            }
+        }
+        return lastText;
+    }
+
+    private sealed record AnswerSnapshot(int Count, string Text, bool Streaming);
+
+    private static async Task<AnswerSnapshot> ReadAsync(CoreWebView2 core, SiteSelectors site)
+    {
+        var json = await RunAsync(core, ReadScript.Replace("__CONFIG__", JsonSerializer.Serialize(site, CamelCase)));
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+        return new AnswerSnapshot(
+            root.GetProperty("count").GetInt32(),
+            root.GetProperty("text").GetString() ?? "",
+            root.GetProperty("streaming").GetBoolean());
     }
 
     /// <summary>Runs a script and returns its result as a plain string.</summary>

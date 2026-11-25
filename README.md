@@ -22,6 +22,13 @@ Type in the box at the bottom and press **Enter** (Shift+Enter adds a new line).
 
 If a site changes its page and sending stops working there, the fix is usually a one-line update to `src/MultiAIChatbot/Services/AiSites.cs`.
 
+## History and Settings
+
+- **History** saves every question, plus each AI's answer once it finishes, on your PC. You can search, copy an answer, delete one entry, or use **Ask again**.
+- **Settings** lets you show or hide each AI, change the column order, turn answer saving on or off, clear history, and log out of all sites.
+
+Everything is stored in `%LOCALAPPDATA%\MultiAIChatbot` and never leaves your PC.
+
 ## Build it yourself
 
 Install the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) on Windows, then run:

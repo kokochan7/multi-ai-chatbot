@@ -89,18 +89,23 @@ public partial class AiPane : UserControl
             Browser.CoreWebView2.Navigate(uri.ToString());
     }
 
-    /// <summary>Types the prompt into this site and presses Send.</summary>
-    public async Task SendPromptAsync(string prompt)
+    /// <summary>
+    /// Types the prompt into this site and presses Send. Returns a task that finishes with the
+    /// answer's text once the site is done replying ("" if it couldn't be read), or null if sending failed.
+    /// </summary>
+    public async Task<Task<string>?> SendPromptAsync(string prompt, bool captureAnswer)
     {
         var site = AiSites.ByKey(SiteKey);
-        if (Browser.CoreWebView2 == null || site == null)
+        var core = Browser.CoreWebView2;
+        if (core == null || site == null)
         {
             ShowStatus("Not ready", isError: true);
-            return;
+            return null;
         }
 
         ShowStatus("Sending…", isError: false);
-        var result = await PromptSender.SendAsync(Browser.CoreWebView2, site, prompt);
+        var countBefore = captureAnswer ? await PromptSender.CountAnswersAsync(core, site) : 0;
+        var result = await PromptSender.SendAsync(core, site, prompt);
         switch (result)
         {
             case SendResult.Sent:
@@ -116,6 +121,18 @@ public partial class AiPane : UserControl
                 ShowStatus("Couldn't send", isError: true);
                 break;
         }
+
+        if (result is SendResult.NoChatBox or SendResult.Error) return null;
+        return captureAnswer
+            ? PromptSender.WaitForAnswerAsync(core, site, countBefore)
+            : Task.FromResult("");
+    }
+
+    /// <summary>Clears this site's saved login and cookies (shared profile, so it affects all columns).</summary>
+    public async Task ClearBrowsingDataAsync()
+    {
+        if (Browser.CoreWebView2 != null)
+            await Browser.CoreWebView2.Profile.ClearBrowsingDataAsync();
     }
 
     private CancellationTokenSource? _statusClear;

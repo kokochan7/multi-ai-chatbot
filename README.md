@@ -18,7 +18,7 @@ The app needs the Microsoft Edge WebView2 Runtime, which comes with Windows 10 a
 
 ## First run
 
-Log in to ChatGPT, Claude and Gemini once, inside their columns. Your logins are saved only on your PC, in `%LOCALAPPDATA%\MultiAIChatbot\BrowserData`, so you stay logged in next time. Each AI has its own separate login, so signing in to one with Google doesn't sign you in to the others. **Settings → Accounts** shows which AIs you're signed in to, with **Sign in** and **Disconnect** for each one.
+Log in to ChatGPT, Claude and Gemini once, inside their columns. Your logins are saved only on your PC, in `%LOCALAPPDATA%\MultiAIChatbot\BrowserData`, so you stay logged in next time. Each AI has its own separate login, so signing in to one with Google doesn't sign you in to the others. **Settings → Accounts** shows which AIs you're signed in to, with **Sign in** and **Disconnect** for each one. New chats start in each site's private mode by default (Claude's Incognito chat, ChatGPT's Temporary Chat, Gemini's Temporary chat) while you're signed in; turn any of them off under **Settings → Private chats**.
 
 ## Asking all three
 

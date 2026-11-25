@@ -125,7 +125,15 @@ public partial class AiPane : UserControl
         var core = Browser.CoreWebView2;
         core.Settings.IsStatusBarEnabled = false;
         core.Settings.AreDevToolsEnabled = true;
-        core.NavigationCompleted += (_, _) => UpdateButtons();
+        core.NavigationCompleted += (_, args) =>
+        {
+            UpdateButtons();
+            if (_privatePending && args.IsSuccess)
+            {
+                _privatePending = false;
+                _ = TurnOnPrivateChatAsync();
+            }
+        };
         core.HistoryChanged += (_, _) => UpdateButtons();
         core.ProcessFailed += (_, args) => OnProcessFailed(env, args);
 
@@ -272,8 +280,45 @@ public partial class AiPane : UserControl
 
     public void GoHome()
     {
-        if (Core is { } core && Uri.TryCreate(HomeUrl, UriKind.Absolute, out var uri))
+        var isPrivate = AppState.Settings.PrivateFor(SiteKey);
+        var url = AiSites.HomeUrl(SiteKey, HomeUrl, isPrivate);
+        if (Core is { } core && Uri.TryCreate(url, UriKind.Absolute, out var uri))
+        {
+            _privatePending = isPrivate && AiSites.PrivateButtonPattern(SiteKey) != null;
             core.Navigate(uri.ToString());
+        }
+    }
+
+    private bool _privatePending;
+    private static readonly string PrivateChatScript = LoadPrivateScript();
+
+    private static string LoadPrivateScript()
+    {
+        var asm = System.Reflection.Assembly.GetExecutingAssembly();
+        var name = asm.GetManifestResourceNames().First(n => n.EndsWith("private-chat.js", StringComparison.OrdinalIgnoreCase));
+        using var reader = new System.IO.StreamReader(asm.GetManifestResourceStream(name)!);
+        return reader.ReadToEnd();
+    }
+
+    /// <summary>
+    /// Clicks the site's private-chat button once its page is ready (Claude: Incognito, Gemini:
+    /// Temporary chat). Signed-out pages have no such button, so nothing happens there.
+    /// </summary>
+    private async Task TurnOnPrivateChatAsync()
+    {
+        if (AiSites.PrivateButtonPattern(SiteKey) is not { } pattern) return;
+        var script = PrivateChatScript.Replace("__WANT__", System.Text.Json.JsonSerializer.Serialize(pattern));
+        for (var attempt = 0; attempt < 16; attempt++)   // the button appears a moment after the page loads
+        {
+            await Task.Delay(500);
+            if (Core is not { } core) return;
+            try
+            {
+                var result = System.Text.Json.JsonSerializer.Deserialize<string>(await core.ExecuteScriptAsync(script));
+                if (result is "clicked" or "already") return;
+            }
+            catch { return; }
+        }
     }
 
     /// <summary>

@@ -21,7 +21,7 @@
 
         <!-- Shared prompt box: one question (plus any attached files) goes to all three sites.
              Drop files anywhere on it, or use the paperclip. -->
-        <Grid Grid.Row="1" Margin="0,14,0,0" MaxWidth="1100" AllowDrop="True"
+        <Grid Grid.Row="1" Margin="0,6,0,0" MaxWidth="1100" AllowDrop="True"
               PreviewDragEnter="PromptBar_PreviewDragOver" PreviewDragOver="PromptBar_PreviewDragOver"
               PreviewDragLeave="PromptBar_PreviewDragLeave" PreviewDrop="PromptBar_PreviewDrop">
             <!-- Soft shadow drawn behind the bar (kept separate so the text stays sharp) -->

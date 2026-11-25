@@ -4,7 +4,6 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
-using System.Windows.Threading;
 using MultiAIChatbot.Services;
 
 namespace MultiAIChatbot;
@@ -20,10 +19,10 @@ public partial class MainWindow : Window
         SourceInitialized += (_, _) => Theme.ApplyTitleBar(this);
         SidebarColumn.Width = new GridLength(AppState.Settings.SidebarWidth);
 
-        _recentView = CollectionViewSource.GetDefaultView(AppState.History);
+        _recentView = CollectionViewSource.GetDefaultView(AppState.Conversations);
         _recentView.Filter = MatchesSearch;
         RecentList.ItemsSource = _recentView;
-        AppState.History.CollectionChanged += (_, _) => UpdateRecentEmpty();
+        AppState.Conversations.CollectionChanged += (_, _) => UpdateRecentEmpty();
         UpdateRecentEmpty();
 
         // Keep the Recent highlight on whatever the History page is showing.
@@ -46,24 +45,15 @@ public partial class MainWindow : Window
 
         Loaded += async (_, _) =>
         {
+            // Check once when the app starts. No periodic checks while it stays open.
             if (!AppState.Settings.CheckForUpdatesOnStartup) return;
             await SettingsPage.CheckAsync(askToInstall: true, quiet: true);
-
-            // The app often stays open for hours, so keep checking quietly. A new version
-            // shows an "Update to …" button in the menu instead of interrupting.
-            var timer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(20) };
-            timer.Tick += async (_, _) =>
-            {
-                if (AppState.Settings.CheckForUpdatesOnStartup && UpdateBanner.Visibility != Visibility.Visible)
-                    await SettingsPage.CheckAsync(askToInstall: false, quiet: true);
-            };
-            timer.Start();
         };
     }
 
     private void UpdateRecentEmpty()
     {
-        var hasHistory = AppState.History.Count > 0;
+        var hasHistory = AppState.Conversations.Count > 0;
         var anyShown = _recentView is { IsEmpty: false };
         RecentEmpty.Text = hasHistory ? "No matches." : "Your questions will show up here.";
         RecentEmpty.Visibility = anyShown ? Visibility.Collapsed : Visibility.Visible;
@@ -73,9 +63,9 @@ public partial class MainWindow : Window
     private bool MatchesSearch(object item)
     {
         var q = SearchBox.Text.Trim();
-        if (q.Length == 0 || item is not HistoryEntry e) return true;
-        return new[] { e.Prompt, e.ChatGpt, e.Claude, e.Gemini }
-            .Any(t => t.Contains(q, StringComparison.OrdinalIgnoreCase));
+        if (q.Length == 0 || item is not Conversation chat) return true;
+        return chat.Entries.Any(e => new[] { e.Prompt, e.ChatGpt, e.Claude, e.Gemini }
+            .Any(t => t.Contains(q, StringComparison.OrdinalIgnoreCase)));
     }
 
     private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
@@ -88,7 +78,7 @@ public partial class MainWindow : Window
 
     private void ClearAll_Click(object sender, RoutedEventArgs e)
     {
-        if (AppState.History.Count == 0) return;
+        if (AppState.Conversations.Count == 0) return;
         var answer = MessageBox.Show(this, "Delete all saved questions and answers?",
             "Clear history", MessageBoxButton.YesNo, MessageBoxImage.Warning);
         if (answer == MessageBoxResult.Yes) AppState.ClearHistory();
@@ -110,7 +100,7 @@ public partial class MainWindow : Window
         else
         {
             // Opening History shows the newest question if nothing is picked yet.
-            if (HistoryPage.Current is null && AppState.History.Count > 0) HistoryPage.Show(AppState.History[0]);
+            if (HistoryPage.Current is null && AppState.Conversations.Count > 0) HistoryPage.Show(AppState.Conversations[0]);
             RecentList.SelectedItem = HistoryPage.Current;
         }
     }
@@ -118,17 +108,17 @@ public partial class MainWindow : Window
     /// <summary>Opens the clicked recent question on the History page.</summary>
     private void RecentList_Click(object sender, MouseButtonEventArgs e)
     {
-        if ((e.OriginalSource as FrameworkElement)?.DataContext is HistoryEntry entry)
+        if ((e.OriginalSource as FrameworkElement)?.DataContext is Conversation entry)
             OpenInHistory(entry);
     }
 
     private void RecentList_KeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Enter && RecentList.SelectedItem is HistoryEntry entry)
+        if (e.Key == Key.Enter && RecentList.SelectedItem is Conversation entry)
             OpenInHistory(entry);
     }
 
-    private void OpenInHistory(HistoryEntry entry)
+    private void OpenInHistory(Conversation entry)
     {
         HistoryPage.Show(entry);
         NavHistory.IsChecked = true;

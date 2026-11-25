@@ -101,7 +101,7 @@
                         </ListBox.ItemContainerStyle>
                         <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding Prompt}" FontSize="13" TextTrimming="CharacterEllipsis"
+                                <TextBlock Text="{Binding Title}" FontSize="13" TextTrimming="CharacterEllipsis"
                                            Foreground="{DynamicResource TextPrimary}"/>
                             </DataTemplate>
                         </ListBox.ItemTemplate>

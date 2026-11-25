@@ -285,9 +285,25 @@ public static class PromptSender
 
     private sealed record AnswerSnapshot(int Count, string Text, bool Streaming);
 
-    private static async Task<AnswerSnapshot> ReadAsync(CoreWebView2 core, SiteSelectors site)
+    /// <summary>
+    /// Reads one answer already on the page (for History's Refresh). <paramref name="index"/> counts
+    /// questions in the chat from 0; it's only trusted when the page has one answer per question.
+    /// Returns "" when the page doesn't match the chat.
+    /// </summary>
+    public static async Task<string> ReadAnswerAtAsync(CoreWebView2 core, SiteSelectors site, int index, int questions)
     {
-        var json = await RunAsync(core, ReadScript.Replace("__CONFIG__", JsonSerializer.Serialize(site, CamelCase)));
+        var all = await ReadAsync(core, site);
+        if (all.Count == 0) return "";
+        if (all.Count == questions) return (await ReadAsync(core, site, index)).Text;
+        // Counts differ (extra steps on the page): only the newest question can be matched safely.
+        return index == questions - 1 ? all.Text : "";
+    }
+
+    private static async Task<AnswerSnapshot> ReadAsync(CoreWebView2 core, SiteSelectors site, int index = -1)
+    {
+        var json = await RunAsync(core, ReadScript
+            .Replace("__CONFIG__", JsonSerializer.Serialize(site, CamelCase))
+            .Replace("__INDEX__", index.ToString()));
         using var doc = JsonDocument.Parse(json);
         var root = doc.RootElement;
         return new AnswerSnapshot(

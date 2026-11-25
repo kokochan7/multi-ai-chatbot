@@ -348,6 +348,15 @@ public partial class AiPane : UserControl
 
     public bool IsReady => Core != null;
 
+    /// <summary>Reads the answer to question number <paramref name="index"/> of the chat open in this column.</summary>
+    public async Task<string> ReadAnswerAsync(int index, int questions)
+    {
+        var site = AiSites.ByKey(SiteKey);
+        if (Core is not { } core || site == null) return "";
+        try { return await PromptSender.ReadAnswerAtAsync(core, site, index, questions); }
+        catch { return ""; }
+    }
+
     /// <summary>Opens the site's sign-in page in this column.</summary>
     public void OpenSignIn()
     {

@@ -10,8 +10,8 @@ namespace MultiAIChatbot.Views;
 /// </summary>
 public partial class HistoryView : UserControl
 {
-    /// <summary>Raised when the user clicks "Ask again", with the question text.</summary>
-    public event Action<string>? AskAgainRequested;
+    /// <summary>Re-reads one question's answers from the AI sites; returns a short result to show.</summary>
+    public Func<Conversation, HistoryEntry, Task<string>>? RefreshRequested { get; set; }
 
     /// <summary>Raised when the shown chat changes (e.g. after Delete), so the menu can follow.</summary>
     public event Action<Conversation?>? CurrentChanged;
@@ -65,8 +65,18 @@ public partial class HistoryView : UserControl
         Show(chats.Count == 0 ? null : chats[Math.Clamp(index, 0, chats.Count - 1)]);
     }
 
-    private void AskAgain_Click(object sender, RoutedEventArgs e)
+    private async void Refresh_Click(object sender, RoutedEventArgs e)
     {
-        if (EntryOf(sender) is { } entry) AskAgainRequested?.Invoke(entry.Prompt);
+        if (sender is not Button button || EntryOf(sender) is not { } entry || Current is not { } chat ||
+            RefreshRequested is not { } refresh) return;
+        button.IsEnabled = false;
+        button.Content = "Refreshing…";
+        string result;
+        try { result = await refresh(chat, entry); }
+        catch { result = "Couldn't refresh"; }
+        button.Content = result;
+        await Task.Delay(2500);
+        button.Content = "Refresh";
+        button.IsEnabled = true;
     }
 }

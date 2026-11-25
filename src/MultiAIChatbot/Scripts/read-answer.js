@@ -1,6 +1,7 @@
 // Reads the newest AI answer on the page as Markdown (headings, bold, lists, links, code, tables),
 // leaving out the site's own buttons, icons, "Searched the web" steps and source chips.
-// The C# side fills in the site config (JSON with answerSelectors) below.
+// The C# side fills in the site config (JSON with answerSelectors) and which answer to read
+// (__INDEX__: -1 for the newest, or 0, 1, 2… counting from the first answer on the page).
 // Returns JSON: { count: number of answers on the page, text: newest answer, streaming: bool }
 (() => {
   const config = __CONFIG__;
@@ -9,7 +10,8 @@
     nodes = Array.from(document.querySelectorAll(sel));
     if (nodes.length) break;
   }
-  const last = nodes[nodes.length - 1];
+  const index = __INDEX__;
+  const last = index >= 0 ? nodes[index] : nodes[nodes.length - 1];
   const streaming = !!document.querySelector(
     "[data-is-streaming='true'], button[data-testid='stop-button'], button[aria-label='Stop streaming'], button[aria-label='Stop response'], button[aria-label='Stop generating']");
 

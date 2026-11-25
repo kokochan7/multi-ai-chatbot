@@ -31,11 +31,7 @@ public partial class MainWindow : Window
             if (NavHistory.IsChecked == true) RecentList.SelectedItem = entry;
         };
 
-        HistoryPage.AskAgainRequested += prompt =>
-        {
-            NavChat.IsChecked = true;
-            ChatPage.SetPrompt(prompt);
-        };
+        HistoryPage.RefreshRequested = ChatPage.RefreshAnswersAsync;
 
         SettingsPage.ShowChatRequested += () => NavChat.IsChecked = true;
 

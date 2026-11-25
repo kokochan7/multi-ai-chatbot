@@ -9,11 +9,34 @@
   // Uses the first selector that finds answers with text in them. Empty placeholders (a
   // "thinking" step, a row kept for buttons) are left out so they don't count as the answer.
   const hasText = el => (el.innerText || el.textContent || '').trim().length > 0;
+
+  // The answers may sit inside a page part of their own (an open shadow root, or a same-site
+  // frame), so search those too, not only the main page.
+  const roots = [];
+  let frames = [];
+  const collect = root => {
+    if (roots.length > 50) return;
+    roots.push(root);
+    root.querySelectorAll('*').forEach(el => {
+      if (el.shadowRoot) collect(el.shadowRoot);
+      if (el.tagName === 'IFRAME') {
+        let src = '';
+        try { src = new URL(el.src, location.href).host; } catch (e) { }
+        let doc = null;
+        try { doc = el.contentDocument; } catch (e) { }
+        frames.push((src || 'blank') + (doc ? '' : '(closed)'));
+        if (doc && doc.body) collect(doc);
+      }
+    });
+  };
+  try { collect(document); } catch (e) { }
+  const qsa = sel => roots.flatMap(r => { try { return Array.from(r.querySelectorAll(sel)); } catch (e) { return []; } });
+  const qs = sel => roots.some(r => { try { return !!r.querySelector(sel); } catch (e) { return false; } });
+
   let nodes = [];
   const diag = [];
   for (const sel of config.answerSelectors) {
-    let found = [];
-    try { found = Array.from(document.querySelectorAll(sel)); } catch (e) { }
+    const found = qsa(sel);
     const withText = found.filter(hasText);
     diag.push(sel + '=' + found.length + '/' + withText.length);
     if (!nodes.length && withText.length)
@@ -21,7 +44,7 @@
   }
   const index = __INDEX__;
   const last = index >= 0 ? nodes[index] : nodes[nodes.length - 1];
-  const streaming = !!document.querySelector(
+  const streaming = qs(
     "[data-is-streaming='true'], button[data-testid='stop-button'], button[aria-label='Stop streaming'], button[aria-label='Stop response'], button[aria-label='Stop generating'], " +
     "li[data-message-role='assistant']:not([data-message-complete]), [data-assistant-markdown-root] [aria-busy='true']");
 
@@ -133,9 +156,20 @@
   let text = '';
   try { text = toMarkdown(last); } catch (e) { text = ''; }
   if (!text && last) text = last.innerText.trim();
-  const info = location.pathname + location.search + ' | ' + diag.join(' ') +
-    ' | author-role=' + document.querySelectorAll('[data-message-author-role]').length +
-    ' turn=' + document.querySelectorAll('[data-turn]').length +
-    ' markdown=' + document.querySelectorAll('.markdown, [data-assistant-markdown-root]').length;
+  // What the page is made of, so a new layout can be matched: page parts, text size, and the
+  // most common data-* attribute names (no page text is logged).
+  let info = location.pathname + location.search + ' | ' + diag.join(' ');
+  try {
+    const attrs = {};
+    roots.forEach(r => r.querySelectorAll('*').forEach(el => {
+      for (const a of el.attributes) if (a.name.startsWith('data-')) attrs[a.name] = (attrs[a.name] || 0) + 1;
+    }));
+    const top = Object.entries(attrs).sort((a, b) => b[1] - a[1]).slice(0, 30).map(([k, v]) => k + '=' + v).join(' ');
+    info += ' | roots=' + roots.length + ' frames=[' + frames.slice(0, 8).join(',') + ']' +
+      ' text=' + (document.body ? document.body.innerText.length : 0) +
+      ' markdown=' + qsa('.markdown, [data-assistant-markdown-root], [class*=markdown]').length +
+      ' main=' + qsa('main').length + ' articles=' + qsa('article').length +
+      ' | attrs: ' + top;
+  } catch (e) { info += ' | info failed: ' + e; }
   return JSON.stringify({ count: nodes.length, text, streaming, info });
 })();

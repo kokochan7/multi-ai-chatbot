@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using Microsoft.Web.WebView2.Core;
 using MultiAIChatbot.Services;
@@ -38,6 +39,17 @@ public partial class AiPane : UserControl
     public string HomeUrl { get => (string)GetValue(HomeUrlProperty); set => SetValue(HomeUrlProperty, value); }
 
     private bool _initStarted;
+
+    // Dragging the header to reorder columns. ChatView listens and does the actual move.
+    private Point? _pressPoint;
+    private bool _dragging;
+
+    /// <summary>Raised while the header is being dragged; ChatView highlights the drop target.</summary>
+    public event Action<AiPane, MouseEventArgs>? HeaderDragMoved;
+    /// <summary>Raised when the header is released after a drag.</summary>
+    public event Action<AiPane, MouseEventArgs>? HeaderDropped;
+    /// <summary>Raised when a drag ends without a drop (e.g. the window lost the mouse).</summary>
+    public event Action<AiPane>? HeaderDragCancelled;
 
     public AiPane()
     {
@@ -91,6 +103,69 @@ public partial class AiPane : UserControl
             Theme.LightMode => CoreWebView2PreferredColorScheme.Light,
             _ => CoreWebView2PreferredColorScheme.Auto,
         };
+    }
+
+    private void Header_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        // The header's buttons handle their own clicks, so this only runs for the bar itself.
+        _pressPoint = e.GetPosition(this);
+        HeaderBar.CaptureMouse();
+    }
+
+    private void Header_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (_pressPoint is not { } start || e.LeftButton != MouseButtonState.Pressed) return;
+
+        if (!_dragging)
+        {
+            var delta = e.GetPosition(this) - start;
+            if (Math.Abs(delta.X) < SystemParameters.MinimumHorizontalDragDistance &&
+                Math.Abs(delta.Y) < SystemParameters.MinimumVerticalDragDistance) return;
+            _dragging = true;
+            SetDragHighlight(DragHighlight.Moving);
+        }
+        HeaderDragMoved?.Invoke(this, e);
+    }
+
+    private void Header_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        var wasDragging = _dragging;
+        _dragging = false;
+        _pressPoint = null;
+        HeaderBar.ReleaseMouseCapture();
+        SetDragHighlight(DragHighlight.None);
+        if (wasDragging) HeaderDropped?.Invoke(this, e);
+    }
+
+    private void Header_LostMouseCapture(object sender, MouseEventArgs e)
+    {
+        _pressPoint = null;
+        if (!_dragging) return;
+        _dragging = false;
+        SetDragHighlight(DragHighlight.None);
+        HeaderDragCancelled?.Invoke(this);
+    }
+
+    public enum DragHighlight { None, Moving, DropTarget }
+
+    /// <summary>Colors the header while it is dragged, or while another column hovers over it.</summary>
+    public void SetDragHighlight(DragHighlight state)
+    {
+        switch (state)
+        {
+            case DragHighlight.Moving:
+                HeaderBar.SetResourceReference(Border.BackgroundProperty, "AccentSoft");
+                HeaderBar.SetResourceReference(Border.BorderBrushProperty, "Divider");
+                break;
+            case DragHighlight.DropTarget:
+                HeaderBar.SetResourceReference(Border.BackgroundProperty, "AccentSoft");
+                HeaderBar.SetResourceReference(Border.BorderBrushProperty, "Accent");
+                break;
+            default:
+                HeaderBar.Background = Brushes.Transparent;
+                HeaderBar.SetResourceReference(Border.BorderBrushProperty, "Divider");
+                break;
+        }
     }
 
     private void UpdateButtons()

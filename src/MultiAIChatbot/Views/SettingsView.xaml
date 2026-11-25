@@ -101,7 +101,7 @@
                         <TextBlock Text="&#xE8A9;" Style="{StaticResource SectionIcon}"/>
                         <TextBlock Text="Columns" Style="{StaticResource Heading}"/>
                     </StackPanel>
-                    <TextBlock Text="Tick the AIs to show, and use the arrows to change their order from left to right."
+                    <TextBlock Text="Tick the AIs to show, and use the arrows to change their order. On the Chat page you can also drag a column by its header to move it, and drag the gaps between columns to resize them."
                                Style="{StaticResource Hint}"/>
                     <ItemsControl x:Name="ColumnList" Margin="28,0,0,0">
                         <ItemsControl.ItemTemplate>

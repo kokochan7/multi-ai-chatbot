@@ -23,6 +23,14 @@ public partial class HistoryView : UserControl
         UpdateEmptyText();
     }
 
+    /// <summary>Selects one question (used by the Recent list in the left menu).</summary>
+    public void Show(HistoryEntry entry)
+    {
+        if (SearchBox.Text.Length > 0) SearchBox.Text = "";
+        EntryList.SelectedItem = entry;
+        EntryList.ScrollIntoView(entry);
+    }
+
     private HistoryEntry? Selected => EntryList.SelectedItem as HistoryEntry;
 
     private bool Matches(object item)

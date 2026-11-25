@@ -425,6 +425,37 @@
                 </Style.Triggers>
             </Style>
 
+            <!-- Draggable divider between panels: invisible until hovered -->
+            <Style x:Key="PanelSplitter" TargetType="GridSplitter">
+                <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                <Setter Property="VerticalAlignment" Value="Stretch"/>
+                <Setter Property="ResizeDirection" Value="Columns"/>
+                <Setter Property="ResizeBehavior" Value="PreviousAndNext"/>
+                <Setter Property="ShowsPreview" Value="False"/>
+                <Setter Property="Cursor" Value="SizeWE"/>
+                <Setter Property="Focusable" Value="False"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="GridSplitter">
+                            <Grid Background="Transparent">
+                                <Border x:Name="Line" Width="3" CornerRadius="1.5" Height="48"
+                                        HorizontalAlignment="Center" VerticalAlignment="Center"
+                                        Background="{DynamicResource ScrollThumb}" Opacity="0"/>
+                            </Grid>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Line" Property="Opacity" Value="1"/>
+                                </Trigger>
+                                <Trigger Property="IsDragging" Value="True">
+                                    <Setter TargetName="Line" Property="Opacity" Value="1"/>
+                                    <Setter TargetName="Line" Property="Background" Value="{DynamicResource Accent}"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
             <!-- Tooltips -->
             <Style TargetType="ToolTip">
                 <Setter Property="FontFamily" Value="{StaticResource UiFont}"/>

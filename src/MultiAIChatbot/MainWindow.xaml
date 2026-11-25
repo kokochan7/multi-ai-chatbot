@@ -9,7 +9,8 @@
         FontFamily="{StaticResource UiFont}" UseLayoutRounding="True">
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="232"/>
+            <ColumnDefinition x:Name="SidebarColumn" Width="232" MinWidth="180" MaxWidth="460"/>
+            <ColumnDefinition Width="6"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
@@ -39,18 +40,49 @@
                                Margin="12,10,0,0"/>
                 </StackPanel>
 
-                <StackPanel>
+                <StackPanel DockPanel.Dock="Top">
                     <TextBlock Text="MENU" Style="{StaticResource SectionLabel}" Margin="12,0,0,8"/>
                     <RadioButton x:Name="NavChat" GroupName="Nav" Style="{StaticResource NavButton}"
                                  Tag="&#xE8F2;" Content="Chat" IsChecked="True" Checked="Nav_Checked"/>
                     <RadioButton x:Name="NavHistory" GroupName="Nav" Style="{StaticResource NavButton}"
                                  Tag="&#xE81C;" Content="History" Checked="Nav_Checked"/>
+                    <TextBlock Text="RECENT" Style="{StaticResource SectionLabel}" Margin="12,22,0,6"/>
                 </StackPanel>
+
+                <!-- Recent questions. Clicking one opens it in History with all its answers. -->
+                <Grid Margin="0,0,0,10">
+                    <ListBox x:Name="RecentList" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             PreviewMouseLeftButtonUp="RecentList_Click" KeyDown="RecentList_KeyDown">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+                                <Setter Property="Padding" Value="12,6"/>
+                                <Setter Property="ToolTip" Value="{Binding Prompt}"/>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel>
+                                    <TextBlock Text="{Binding Prompt}" FontSize="13" TextTrimming="CharacterEllipsis"
+                                               Foreground="{DynamicResource TextPrimary}"/>
+                                    <TextBlock Text="{Binding TimeText}" FontSize="10.5" Margin="0,1,0,0"
+                                               Foreground="{DynamicResource TextMuted}"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    <TextBlock x:Name="RecentEmpty" Text="Your questions will show up here."
+                               FontSize="12" Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap"
+                               Margin="12,4,8,0" VerticalAlignment="Top"/>
+                </Grid>
             </DockPanel>
         </Border>
 
+        <!-- Drag to resize the left menu -->
+        <GridSplitter Grid.Column="1" Style="{StaticResource PanelSplitter}" Margin="-3,0,0,0"
+                      DragCompleted="SidebarSplitter_DragCompleted"/>
+
         <!-- Pages. All stay loaded so the AI sites keep their state when you switch pages. -->
-        <Grid Grid.Column="1" Margin="16">
+        <Grid Grid.Column="2" Margin="10,16,16,16">
             <v:ChatView x:Name="ChatPage"/>
             <v:HistoryView x:Name="HistoryPage" Visibility="Collapsed"/>
             <v:SettingsView x:Name="SettingsPage" Visibility="Collapsed"/>

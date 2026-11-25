@@ -21,32 +21,116 @@ public partial class ChatView : UserControl
     public ChatView()
     {
         InitializeComponent();
+        foreach (var pane in AllPanes)
+        {
+            pane.HeaderDragMoved += Pane_HeaderDragMoved;
+            pane.HeaderDropped += Pane_HeaderDropped;
+            pane.HeaderDragCancelled += Pane_HeaderDragCancelled;
+        }
         ApplyLayout();
         AppState.SettingsChanged += ApplyLayout;
         AppState.LogOutRequested += LogOutAllAsync;
         Loaded += (_, _) => PromptBox.Focus();
     }
 
-    /// <summary>Arranges the columns to match Settings (order and which ones are shown).</summary>
+    private readonly List<GridSplitter> _splitters = new();
+    private AiPane? _dropTarget;
+
+    /// <summary>
+    /// Arranges the columns to match Settings: order, which ones are shown, and their widths.
+    /// The gaps between columns are draggable dividers.
+    /// </summary>
     private void ApplyLayout()
     {
+        foreach (var splitter in _splitters) ColumnsGrid.Children.Remove(splitter);
+        _splitters.Clear();
         ColumnsGrid.ColumnDefinitions.Clear();
         foreach (var pane in AllPanes) pane.Visibility = Visibility.Collapsed;
 
+        var widths = AppState.Settings.ColumnWidths;
         var col = 0;
         foreach (var pane in VisiblePanes)
         {
             if (col > 0)
             {
                 ColumnsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(ColumnGap) });
+                var splitter = new GridSplitter
+                {
+                    Style = (Style)FindResource("PanelSplitter"),
+                    ToolTip = "Drag to resize",
+                };
+                splitter.DragCompleted += (_, _) => SaveColumnWidths();
+                Grid.SetColumn(splitter, col);
+                ColumnsGrid.Children.Add(splitter);
+                _splitters.Add(splitter);
                 col++;
             }
-            ColumnsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            var weight = widths.TryGetValue(pane.SiteKey, out var w) && w > 0.05 && w < 20 ? w : 1;
+            ColumnsGrid.ColumnDefinitions.Add(new ColumnDefinition
+            {
+                Width = new GridLength(weight, GridUnitType.Star),
+                MinWidth = 200,
+            });
             Grid.SetColumn(pane, col);
             pane.Visibility = Visibility.Visible;
             col++;
         }
     }
+
+    /// <summary>Remembers the column widths after a divider is dragged.</summary>
+    private void SaveColumnWidths()
+    {
+        var panes = VisiblePanes.ToList();
+        var actual = panes.Select(p => ColumnsGrid.ColumnDefinitions[Grid.GetColumn(p)].ActualWidth).ToList();
+        var average = actual.Average();
+        if (average <= 0) return;
+        for (var i = 0; i < panes.Count; i++)
+            AppState.Settings.ColumnWidths[panes[i].SiteKey] = Math.Round(actual[i] / average, 3);
+        AppState.SaveSettingsQuietly();
+    }
+
+    // ---- Drag a column's header to reorder ----
+
+    private AiPane? PaneUnder(MouseEventArgs e)
+    {
+        var x = e.GetPosition(ColumnsGrid).X;
+        foreach (var pane in VisiblePanes)
+        {
+            var left = pane.TranslatePoint(new Point(0, 0), ColumnsGrid).X;
+            if (x >= left - ColumnGap / 2 && x <= left + pane.ActualWidth + ColumnGap / 2) return pane;
+        }
+        return null;
+    }
+
+    private void SetDropTarget(AiPane? target)
+    {
+        if (target == _dropTarget) return;
+        _dropTarget?.SetDragHighlight(AiPane.DragHighlight.None);
+        _dropTarget = target;
+        _dropTarget?.SetDragHighlight(AiPane.DragHighlight.DropTarget);
+    }
+
+    private void Pane_HeaderDragMoved(AiPane source, MouseEventArgs e)
+    {
+        var target = PaneUnder(e);
+        SetDropTarget(target == source ? null : target);
+    }
+
+    private void Pane_HeaderDropped(AiPane source, MouseEventArgs e)
+    {
+        var target = PaneUnder(e);
+        SetDropTarget(null);
+        if (target is null || target == source) return;
+
+        // The dragged column takes the target's place; the others shift over.
+        var order = AppState.Settings.ColumnOrder;
+        var targetIndex = order.IndexOf(target.SiteKey);
+        order.Remove(source.SiteKey);
+        order.Insert(Math.Min(targetIndex, order.Count), source.SiteKey);
+        AppState.SaveSettings();   // also rearranges the columns via SettingsChanged
+    }
+
+    private void Pane_HeaderDragCancelled(AiPane source) => SetDropTarget(null);
 
     private void PromptBox_PreviewKeyDown(object sender, KeyEventArgs e)
     {

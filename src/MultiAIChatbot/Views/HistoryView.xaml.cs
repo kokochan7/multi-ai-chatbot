@@ -13,6 +13,14 @@ public partial class HistoryView : UserControl
     /// <summary>Re-reads one question's answers from the AI sites; returns a short result to show.</summary>
     public Func<Conversation, HistoryEntry, Task<string>>? RefreshRequested { get; set; }
 
+    /// <summary>Raised by a question's Compare link, to open it on the Compare page.</summary>
+    public event Action<HistoryEntry>? CompareRequested;
+
+    private void Compare_Click(object sender, RoutedEventArgs e)
+    {
+        if (EntryOf(sender) is { } entry) CompareRequested?.Invoke(entry);
+    }
+
     /// <summary>Raised when the shown chat changes (e.g. after Delete), so the menu can follow.</summary>
     public event Action<Conversation?>? CurrentChanged;
 

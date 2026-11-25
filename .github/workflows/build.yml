@@ -3,7 +3,6 @@ name: Build Windows app
 on:
   push:
     branches: [main]
-    tags: ['v*']
   pull_request:
   workflow_dispatch:
 
@@ -19,6 +18,12 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
+      # Each build gets its own version, 1.0.<run number>, so the app's
+      # "Check for updates" button can tell which build is newer.
+      - name: Set version
+        shell: bash
+        run: echo "APP_VERSION=1.0.${{ github.run_number }}" >> "$GITHUB_ENV"
+
       - name: Publish single-file .exe
         run: >
           dotnet publish src/MultiAIChatbot/MultiAIChatbot.csproj
@@ -26,6 +31,7 @@ jobs:
           -p:PublishSingleFile=true
           -p:IncludeNativeLibrariesForSelfExtract=true
           -p:EnableCompressionInSingleFile=true
+          -p:Version=${{ env.APP_VERSION }}
           -o publish
 
       - name: Upload .exe
@@ -34,8 +40,15 @@ jobs:
           name: MultiAIChatbot-win-x64
           path: publish/MultiAIChatbot.exe
 
-      - name: Attach .exe to release (tags only)
-        if: startsWith(github.ref, 'refs/tags/v')
+      # Every push to main becomes a GitHub Release. The app downloads its
+      # updates from the latest release (no sign-in needed, unlike Actions artifacts).
+      - name: Publish release (main only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ env.APP_VERSION }}
+          name: Multi-AI Chatbot ${{ env.APP_VERSION }}
+          target_commitish: ${{ github.sha }}
+          generate_release_notes: true
+          make_latest: 'true'
           files: publish/MultiAIChatbot.exe

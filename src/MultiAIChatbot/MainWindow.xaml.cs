@@ -7,6 +7,11 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        HistoryPage.AskAgainRequested += prompt =>
+        {
+            NavChat.IsChecked = true;
+            ChatPage.SetPrompt(prompt);
+        };
     }
 
     private void Nav_Checked(object sender, RoutedEventArgs e)

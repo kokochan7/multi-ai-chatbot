@@ -8,21 +8,14 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Three AI columns side by side -->
-        <Grid Grid.Row="0">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="12"/>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="12"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
+        <!-- AI columns side by side. Order and visibility come from Settings. -->
+        <Grid Grid.Row="0" x:Name="ColumnsGrid">
 
-            <c:AiPane x:Name="ChatGptPane" SiteKey="chatgpt" Grid.Column="0" Title="ChatGPT" Badge="G" Accent="#10A37F"
+            <c:AiPane x:Name="ChatGptPane" SiteKey="chatgpt" Title="ChatGPT" Badge="G" Accent="#10A37F"
                       HomeUrl="https://chatgpt.com/"/>
-            <c:AiPane x:Name="ClaudePane" SiteKey="claude" Grid.Column="2" Title="Claude" Badge="C" Accent="#D97757"
+            <c:AiPane x:Name="ClaudePane" SiteKey="claude" Title="Claude" Badge="C" Accent="#D97757"
                       HomeUrl="https://claude.ai/new"/>
-            <c:AiPane x:Name="GeminiPane" SiteKey="gemini" Grid.Column="4" Title="Gemini" Badge="G" Accent="#4285F4"
+            <c:AiPane x:Name="GeminiPane" SiteKey="gemini" Title="Gemini" Badge="G" Accent="#4285F4"
                       HomeUrl="https://gemini.google.com/app"/>
         </Grid>
 

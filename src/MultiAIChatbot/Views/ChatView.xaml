@@ -18,19 +18,19 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <c:AiPane Grid.Column="0" Title="ChatGPT" Badge="G" Accent="#10A37F"
+            <c:AiPane x:Name="ChatGptPane" SiteKey="chatgpt" Grid.Column="0" Title="ChatGPT" Badge="G" Accent="#10A37F"
                       HomeUrl="https://chatgpt.com/"/>
-            <c:AiPane Grid.Column="2" Title="Claude" Badge="C" Accent="#D97757"
+            <c:AiPane x:Name="ClaudePane" SiteKey="claude" Grid.Column="2" Title="Claude" Badge="C" Accent="#D97757"
                       HomeUrl="https://claude.ai/new"/>
-            <c:AiPane Grid.Column="4" Title="Gemini" Badge="G" Accent="#4285F4"
+            <c:AiPane x:Name="GeminiPane" SiteKey="gemini" Grid.Column="4" Title="Gemini" Badge="G" Accent="#4285F4"
                       HomeUrl="https://gemini.google.com/app"/>
         </Grid>
 
-        <!-- Shared prompt box (sending to all three arrives in Step 2) -->
+        <!-- Shared prompt box: one question goes to all three sites -->
         <Border Grid.Row="1" Style="{StaticResource Card}" Margin="0,12,0,0" Padding="16,10">
             <DockPanel>
-                <Button DockPanel.Dock="Right" Width="38" Height="38" IsEnabled="False"
-                        ToolTip="Send to all three (coming in the next update)" Cursor="Hand">
+                <Button x:Name="SendButton" DockPanel.Dock="Right" Width="38" Height="38"
+                        ToolTip="Send to all three (Enter)" Cursor="Hand" Click="Send_Click">
                     <Button.Template>
                         <ControlTemplate TargetType="Button">
                             <Border x:Name="Bg" Background="{StaticResource Accent}" CornerRadius="19">
@@ -45,10 +45,19 @@
                         </ControlTemplate>
                     </Button.Template>
                 </Button>
-                <TextBox x:Name="PromptBox" BorderThickness="0" FontFamily="{StaticResource UiFont}" FontSize="15"
-                         VerticalContentAlignment="Center" Margin="0,0,12,0" MinHeight="38"
-                         TextWrapping="Wrap" AcceptsReturn="False" IsEnabled="False"
-                         ToolTip="Log in to each site above first. One-prompt sending arrives in the next update."/>
+                <Button DockPanel.Dock="Left" Style="{StaticResource IconButton}" Content="&#xE710;"
+                        Width="38" Height="38" FontSize="16" Margin="0,0,8,0"
+                        ToolTip="New chat on all three sites" Click="NewChat_Click"/>
+                <Grid Margin="0,0,12,0">
+                    <TextBox x:Name="PromptBox" BorderThickness="0" FontFamily="{StaticResource UiFont}" FontSize="15"
+                             VerticalContentAlignment="Center" MinHeight="38" MaxHeight="160"
+                             TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto"
+                             PreviewKeyDown="PromptBox_PreviewKeyDown" TextChanged="PromptBox_TextChanged"/>
+                    <TextBlock x:Name="Placeholder" IsHitTestVisible="False" Margin="3,0,0,0"
+                               Text="Ask all three AIs… (Enter to send, Shift+Enter for a new line)"
+                               FontFamily="{StaticResource UiFont}" FontSize="15"
+                               Foreground="{StaticResource TextMuted}" VerticalAlignment="Center"/>
+                </Grid>
             </DockPanel>
         </Border>
     </Grid>

@@ -12,7 +12,7 @@ Every change merged to `main` is built by GitHub and published as a release.
 2. Download `MultiAIChatbot.exe`.
 3. Double-click it. No install is needed.
 
-After that you don't need to download it again: the app checks for a new version when it starts and every 20 minutes while open (an **Update to …** button appears in the left menu), and **Settings → Updates → Check for updates** installs the newest build and restarts the app. Keep the .exe in a folder you can write to (like Documents or Desktop), so it can replace itself.
+After that you don't need to download it again: the app checks for a new version once when it starts, and **Settings → Updates → Check for updates** installs the newest build and restarts the app. Keep the .exe in a folder you can write to (like Documents or Desktop), so it can replace itself.
 
 The app needs the Microsoft Edge WebView2 Runtime, which comes with Windows 10 and 11.
 
@@ -22,15 +22,15 @@ Log in to ChatGPT, Claude and Gemini once, inside their columns. Your logins are
 
 ## Asking all three
 
-Type in the box at the bottom and press **Enter** (Shift+Enter adds a new line). To include files or images, drop them on the box or click the paperclip; they're attached on every site before your question is sent (up to 25 MB in total). If the box has grown, the shrink button next to Send puts it back to one line. The app types your question into ChatGPT, Claude and Gemini and presses Send on each. Each column shows a short status ("Sent", or what went wrong). The **New Chat** button at the top of the left menu starts a new chat on all three sites.
+Type in the box at the bottom and press **Enter** (Shift+Enter adds a new line). To include files or images, drop them on the box (from File Explorer, a web page, or another app), paste a picture with Ctrl+V, or click the paperclip; they're attached on every site before your question is sent (up to 25 MB in total). If the box has grown, the shrink button next to Send puts it back to one line. The app types your question into ChatGPT, Claude and Gemini and presses Send on each. Each column shows a short status ("Sent", or what went wrong). The **New Chat** button at the top of the left menu starts a new chat on all three sites.
 
-Drag a column by its header bar to move it, and drag the gaps between columns (or the edge of the left menu) to resize them. The app remembers the order and sizes, and **Reset view** at the bottom of the left menu puts everything back to the default layout. Your past questions are listed under Recent in the left menu, with a search box and Clear all; click one to see all its answers on the History page.
+Drag a column by its header bar to move it, and drag the gaps between columns (or the edge of the left menu) to resize them. The app remembers the order and sizes, and **Reset view** at the bottom of the left menu puts everything back to the default layout. Your past chats are listed under Recent in the left menu by their first question, with a search box and Clear all; click one to see every question in that chat with all its answers on the History page. Follow-up questions stay in the same chat until you press **New Chat**.
 
 If a site changes its page and sending stops working there, the fix is usually a one-line update to `src/MultiAIChatbot/Services/AiSites.cs`.
 
 ## History and Settings
 
-- **History** saves every question, plus each AI's answer once it finishes, on your PC. Pick one under **Recent** in the left menu (with search) to see its answers side by side, copy an answer, delete it, or use **Ask again**.
+- **History** saves every question, plus each AI's answer once it finishes, on your PC. Pick a chat under **Recent** in the left menu (with search) to see each of its questions with the answers side by side, copy an answer, use **Ask again**, or delete the chat.
 - **Settings** lets you pick a light or dark theme (or follow Windows), show or hide each AI, change the column order, turn answer saving on or off, clear history, log out of all sites, and update the app.
 
 Everything is stored in `%LOCALAPPDATA%\MultiAIChatbot` and never leaves your PC.

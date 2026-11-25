@@ -37,10 +37,17 @@ public partial class ChatView : UserControl
         AppState.SettingsChanged += ApplyLayout;
         AppState.LogOutRequested += LogOutAllAsync;
         Loaded += (_, _) => PromptBox.Focus();
+
+        // Ctrl+V of a picture or copied files attaches them instead of pasting nothing.
+        CommandManager.AddPreviewCanExecuteHandler(PromptBox, PromptBox_PreviewCanPaste);
+        CommandManager.AddPreviewExecutedHandler(PromptBox, PromptBox_PreviewPaste);
     }
 
     private readonly List<GridSplitter> _splitters = new();
     private readonly ObservableCollection<Attachment> _attachments = new();
+
+    /// <summary>The chat that new questions belong to in History; New Chat starts another one.</summary>
+    private Guid _conversationId = Guid.NewGuid();
     private AiPane? _dropTarget;
 
     /// <summary>
@@ -191,11 +198,11 @@ public partial class ChatView : UserControl
         if (dialog.ShowDialog(Window.GetWindow(this)) == true) AddFiles(dialog.FileNames);
     }
 
-    private static bool HasFiles(DragEventArgs e) => e.Data.GetDataPresent(DataFormats.FileDrop);
+    private static bool HasFiles(DragEventArgs e) => DroppedFiles.HasFileLikeData(e.Data, fromPaste: false);
 
     private void PromptBar_PreviewDragOver(object sender, DragEventArgs e)
     {
-        if (!HasFiles(e)) return;   // let text drags reach the text box as usual
+        if (!HasFiles(e)) return;   // let plain text drags reach the text box as usual
         e.Effects = DragDropEffects.Copy;
         e.Handled = true;
         PromptBarBorder.SetResourceReference(Border.BorderBrushProperty, "Accent");
@@ -209,9 +216,82 @@ public partial class ChatView : UserControl
     private void PromptBar_PreviewDrop(object sender, DragEventArgs e)
     {
         PromptBarBorder.SetResourceReference(Border.BorderBrushProperty, "CardBorder");
-        if (!HasFiles(e) || e.Data.GetData(DataFormats.FileDrop) is not string[] paths) return;
+        if (!HasFiles(e)) return;
+        e.Handled = true;   // stop the text box from typing the picture's address
+        _ = AttachFromDataAsync(e.Data, fromPaste: false);
+    }
+
+    private static IDataObject? ClipboardFiles()
+    {
+        try
+        {
+            var data = Clipboard.GetDataObject();
+            return data != null && DroppedFiles.HasFileLikeData(data, fromPaste: true) ? data : null;
+        }
+        catch { return null; }   // the clipboard can be busy in another app
+    }
+
+    private void PromptBox_PreviewCanPaste(object sender, CanExecuteRoutedEventArgs e)
+    {
+        // The text box only enables Paste for text; turn it on for pictures and files too.
+        if (e.Command != ApplicationCommands.Paste || ClipboardFiles() == null) return;
+        e.CanExecute = true;
         e.Handled = true;
-        AddFiles(paths);
+    }
+
+    private void PromptBox_PreviewPaste(object sender, ExecutedRoutedEventArgs e)
+    {
+        if (e.Command != ApplicationCommands.Paste) return;
+        if (ClipboardFiles() is not { } data) return;
+        e.Handled = true;
+        _ = AttachFromDataAsync(data, fromPaste: true);
+    }
+
+    /// <summary>
+    /// Attaches whatever was dropped or pasted: files, a picture from a web page or app, or a
+    /// picture's web address (downloaded first). A link to a normal web page is typed as text.
+    /// </summary>
+    private async Task AttachFromDataAsync(IDataObject data, bool fromPaste)
+    {
+        var temp = new List<string>();
+        try
+        {
+            var found = DroppedFiles.Extract(data, fromPaste);   // must be read before the drop ends
+            var paths = new List<string>(found.Paths);
+            temp.AddRange(found.Paths);
+            if (found.Urls.Count > 0)
+            {
+                Mouse.OverrideCursor = Cursors.AppStarting;
+                try
+                {
+                    foreach (var url in found.Urls)
+                    {
+                        var path = await DroppedFiles.DownloadAsync(url);
+                        if (path != null) { paths.Add(path); temp.Add(path); }
+                    }
+                }
+                finally { Mouse.OverrideCursor = null; }
+            }
+
+            if (paths.Count > 0) AddFiles(paths);
+            else if (!string.IsNullOrWhiteSpace(found.Text)) InsertText(found.Text.Trim());
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(Window.GetWindow(this)!, "Couldn't attach that: " + ex.Message,
+                "Attach files", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        finally
+        {
+            DroppedFiles.Cleanup(temp);   // only removes the app's own temporary copies
+        }
+    }
+
+    private void InsertText(string text)
+    {
+        PromptBox.SelectedText = text;
+        PromptBox.CaretIndex = PromptBox.SelectionStart + PromptBox.SelectionLength;
+        PromptBox.Focus();
     }
 
     private void AddFiles(IEnumerable<string> paths)
@@ -262,7 +342,7 @@ public partial class ChatView : UserControl
         if (panes.Count == 0) return;
 
         SendButton.IsEnabled = false;
-        var entry = AppState.AddHistory(prompt);
+        var entry = AppState.AddHistory(prompt, _conversationId);
         var capture = AppState.Settings.SaveAnswers;
 
         try
@@ -313,6 +393,7 @@ public partial class ChatView : UserControl
     /// <summary>Opens a fresh chat on every AI site (the New Chat button in the left menu).</summary>
     public void StartNewChat()
     {
+        _conversationId = Guid.NewGuid();
         foreach (var pane in AllPanes) pane.GoHome();
         PromptBox.Focus();
     }

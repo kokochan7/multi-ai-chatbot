@@ -23,85 +23,99 @@
         </Style>
     </UserControl.Resources>
 
-    <!-- The selected question with its answers (pick one under Recent in the left menu) -->
+    <!-- One chat from the Recent list: every question asked in it, each with its answers side by side -->
     <Border Style="{StaticResource Card}" Padding="24,20">
         <Grid>
             <StackPanel x:Name="NoSelectionText" HorizontalAlignment="Center" VerticalAlignment="Center">
                 <TextBlock Text="&#xE8BD;" FontFamily="{StaticResource IconFont}" FontSize="30"
                            Foreground="{DynamicResource TextMuted}" HorizontalAlignment="Center" Margin="0,0,0,12"/>
-                <TextBlock Text="Pick a question under Recent in the left menu to compare its answers."
+                <TextBlock Text="Pick a chat under Recent in the left menu to compare its answers."
                            Foreground="{DynamicResource TextMuted}" FontSize="14"/>
             </StackPanel>
             <DockPanel x:Name="DetailPanel" Visibility="Collapsed">
-                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,18">
-                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top">
-                        <Button Style="{StaticResource PrimaryButton}" Click="AskAgain_Click" Margin="0,0,8,0"
-                                ToolTip="Put this question back in the prompt box">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="&#xE72C;" FontFamily="{StaticResource IconFont}" FontSize="12"
-                                           VerticalAlignment="Center" Margin="0,0,8,0"/>
-                                <TextBlock Text="Ask again" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Button>
-                        <Button Style="{StaticResource DangerButton}" Click="Delete_Click" ToolTip="Delete this question">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="&#xE74D;" FontFamily="{StaticResource IconFont}" FontSize="12"
-                                           VerticalAlignment="Center" Margin="0,0,8,0"/>
-                                <TextBlock Text="Delete" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Button>
-                    </StackPanel>
+                <!-- Chat header -->
+                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,16">
+                    <Button DockPanel.Dock="Right" Style="{StaticResource DangerButton}" Click="Delete_Click"
+                            VerticalAlignment="Top" ToolTip="Delete this chat and all its answers">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE74D;" FontFamily="{StaticResource IconFont}" FontSize="12"
+                                       VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <TextBlock Text="Delete chat" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
                     <StackPanel Margin="0,0,16,0">
-                        <TextBlock Text="{Binding TimeText}" FontSize="12" Foreground="{DynamicResource TextMuted}"/>
-                        <TextBox Text="{Binding Prompt, Mode=OneWay}" Style="{StaticResource AnswerBox}"
-                                 FontFamily="{StaticResource DisplayFont}" FontSize="19" FontWeight="SemiBold"
-                                 MaxHeight="120" Margin="0,4,0,0"/>
+                        <TextBlock FontSize="12" Foreground="{DynamicResource TextMuted}">
+                            <Run Text="{Binding TimeText, Mode=OneWay}"/><Run Text="  ·  "/><Run Text="{Binding CountText, Mode=OneWay}"/>
+                        </TextBlock>
+                        <TextBlock Text="{Binding Title}" FontFamily="{StaticResource DisplayFont}" FontSize="19"
+                                   FontWeight="SemiBold" TextWrapping="Wrap" MaxHeight="56" TextTrimming="CharacterEllipsis"
+                                   Margin="0,4,0,0"/>
                     </StackPanel>
                 </DockPanel>
 
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="12"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="12"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-
-                    <Border Grid.Column="0" Style="{StaticResource AnswerCard}">
-                        <DockPanel>
-                            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
-                                <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xE8C8;"
-                                        ToolTip="Copy answer" Tag="chatgpt" Click="Copy_Click"/>
-                                <Ellipse Width="8" Height="8" Fill="#10A37F" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                                <TextBlock Text="ChatGPT" FontWeight="SemiBold" FontSize="14" VerticalAlignment="Center"/>
-                            </DockPanel>
-                            <TextBox Style="{StaticResource AnswerBox}" Text="{Binding ChatGpt, Mode=OneWay}"/>
-                        </DockPanel>
-                    </Border>
-                    <Border Grid.Column="2" Style="{StaticResource AnswerCard}">
-                        <DockPanel>
-                            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
-                                <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xE8C8;"
-                                        ToolTip="Copy answer" Tag="claude" Click="Copy_Click"/>
-                                <Ellipse Width="8" Height="8" Fill="#D97757" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                                <TextBlock Text="Claude" FontWeight="SemiBold" FontSize="14" VerticalAlignment="Center"/>
-                            </DockPanel>
-                            <TextBox Style="{StaticResource AnswerBox}" Text="{Binding Claude, Mode=OneWay}"/>
-                        </DockPanel>
-                    </Border>
-                    <Border Grid.Column="4" Style="{StaticResource AnswerCard}">
-                        <DockPanel>
-                            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
-                                <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xE8C8;"
-                                        ToolTip="Copy answer" Tag="gemini" Click="Copy_Click"/>
-                                <Ellipse Width="8" Height="8" Fill="#4285F4" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                                <TextBlock Text="Gemini" FontWeight="SemiBold" FontSize="14" VerticalAlignment="Center"/>
-                            </DockPanel>
-                            <TextBox Style="{StaticResource AnswerBox}" Text="{Binding Gemini, Mode=OneWay}"/>
-                        </DockPanel>
-                    </Border>
-                </Grid>
+                <!-- Every question in the chat, oldest first -->
+                <ScrollViewer x:Name="TurnsScroller" VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding Entries}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Margin="0,0,8,22">
+                                    <DockPanel Margin="0,0,0,10">
+                                        <Button DockPanel.Dock="Right" Style="{StaticResource QuietLinkButton}" FontSize="12"
+                                                Content="Ask again" Click="AskAgain_Click" VerticalAlignment="Top"
+                                                ToolTip="Put this question back in the prompt box"/>
+                                        <TextBlock Text="&#xE8F2;" FontFamily="{StaticResource IconFont}" FontSize="13"
+                                                   Foreground="{DynamicResource AccentText}" VerticalAlignment="Top"
+                                                   Margin="0,3,10,0"/>
+                                        <TextBox Text="{Binding Prompt, Mode=OneWay}" Style="{StaticResource AnswerBox}"
+                                                 FontSize="15" FontWeight="SemiBold" MaxHeight="120"/>
+                                    </DockPanel>
+                                    <Grid MaxHeight="420">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="12"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="12"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                    <Border Grid.Column="0" Style="{StaticResource AnswerCard}">
+                                        <DockPanel>
+                                            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                                                <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xE8C8;"
+                                                        ToolTip="Copy answer" Tag="chatgpt" Click="Copy_Click"/>
+                                                <Ellipse Width="8" Height="8" Fill="#10A37F" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                <TextBlock Text="ChatGPT" FontWeight="SemiBold" FontSize="14" VerticalAlignment="Center"/>
+                                            </DockPanel>
+                                            <TextBox Style="{StaticResource AnswerBox}" Text="{Binding ChatGpt, Mode=OneWay}"/>
+                                        </DockPanel>
+                                    </Border>
+                                    <Border Grid.Column="2" Style="{StaticResource AnswerCard}">
+                                        <DockPanel>
+                                            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                                                <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xE8C8;"
+                                                        ToolTip="Copy answer" Tag="claude" Click="Copy_Click"/>
+                                                <Ellipse Width="8" Height="8" Fill="#D97757" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                <TextBlock Text="Claude" FontWeight="SemiBold" FontSize="14" VerticalAlignment="Center"/>
+                                            </DockPanel>
+                                            <TextBox Style="{StaticResource AnswerBox}" Text="{Binding Claude, Mode=OneWay}"/>
+                                        </DockPanel>
+                                    </Border>
+                                    <Border Grid.Column="4" Style="{StaticResource AnswerCard}">
+                                        <DockPanel>
+                                            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                                                <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xE8C8;"
+                                                        ToolTip="Copy answer" Tag="gemini" Click="Copy_Click"/>
+                                                <Ellipse Width="8" Height="8" Fill="#4285F4" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                <TextBlock Text="Gemini" FontWeight="SemiBold" FontSize="14" VerticalAlignment="Center"/>
+                                            </DockPanel>
+                                            <TextBox Style="{StaticResource AnswerBox}" Text="{Binding Gemini, Mode=OneWay}"/>
+                                        </DockPanel>
+                                    </Border>
+                                    </Grid>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
             </DockPanel>
         </Grid>
     </Border>

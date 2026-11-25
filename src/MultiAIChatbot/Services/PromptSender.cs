@@ -15,14 +15,25 @@ public static class PromptSender
     private static readonly string InsertScript = LoadScript("insert-prompt.js");
     private static readonly string ClickScript = LoadScript("click-send.js");
     private static readonly string ReadScript = LoadScript("read-answer.js");
+    private static readonly string AttachScript = LoadScript("attach-files.js");
 
     private static readonly JsonSerializerOptions CamelCase = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
-    public static async Task<SendResult> SendAsync(CoreWebView2 core, SiteSelectors site, string prompt)
+    public static async Task<SendResult> SendAsync(CoreWebView2 core, SiteSelectors site, string prompt,
+        IReadOnlyList<Attachment>? files = null)
     {
         try
         {
             var config = JsonSerializer.Serialize(site, CamelCase);
+            var hasFiles = files is { Count: > 0 };
+
+            if (hasFiles)
+            {
+                var payload = JsonSerializer.Serialize(files!.Select(f => new { name = f.Name, type = f.MimeType, data = f.Base64 }));
+                await RunAsync(core, AttachScript.Replace("__CONFIG__", config).Replace("__FILES__", payload));
+                // Give the site a moment to start the upload before typing.
+                await Task.Delay(800);
+            }
 
             var insertJson = await RunAsync(core, InsertScript
                 .Replace("__CONFIG__", config)
@@ -35,7 +46,9 @@ public static class PromptSender
 
             // The Send button usually turns on a moment after text appears.
             var click = ClickScript.Replace("__CONFIG__", config);
-            for (var attempt = 0; attempt < 20; attempt++)
+            // With files attached, Send stays off until the upload finishes, so wait longer.
+            var attempts = hasFiles ? 200 : 20;
+            for (var attempt = 0; attempt < attempts; attempt++)
             {
                 await Task.Delay(150);
                 var result = await RunAsync(core, click.Replace("__USE_ENTER__", "false"));

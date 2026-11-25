@@ -1,6 +1,9 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Collections.ObjectModel;
+using System.IO;
 using System.Windows.Input;
+using Microsoft.Win32;
 using MultiAIChatbot.Controls;
 using MultiAIChatbot.Services;
 
@@ -28,12 +31,16 @@ public partial class ChatView : UserControl
             pane.HeaderDragCancelled += Pane_HeaderDragCancelled;
         }
         ApplyLayout();
+        AttachmentList.ItemsSource = _attachments;
+        _attachments.CollectionChanged += (_, _) =>
+            AttachmentList.Visibility = _attachments.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         AppState.SettingsChanged += ApplyLayout;
         AppState.LogOutRequested += LogOutAllAsync;
         Loaded += (_, _) => PromptBox.Focus();
     }
 
     private readonly List<GridSplitter> _splitters = new();
+    private readonly ObservableCollection<Attachment> _attachments = new();
     private AiPane? _dropTarget;
 
     /// <summary>
@@ -149,9 +156,106 @@ public partial class ChatView : UserControl
 
     private void Send_Click(object sender, RoutedEventArgs e) => _ = SendToAllAsync();
 
+    // ---- Chat box size ----
+
+    private void PromptBox_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        ShrinkButton.Visibility = PromptBox.ActualHeight > 60 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void Shrink_Click(object sender, RoutedEventArgs e) => ShrinkPromptBox();
+
+    /// <summary>
+    /// Puts the chat box back to its normal one-line size: removes the blank lines that
+    /// made it grow (Shift+Enter) and scrolls back to the start of any longer text.
+    /// </summary>
+    public void ShrinkPromptBox()
+    {
+        var trimmed = PromptBox.Text.Trim();
+        if (trimmed != PromptBox.Text) PromptBox.Text = trimmed;
+        PromptBox.CaretIndex = PromptBox.Text.Length;
+        PromptBox.ScrollToHome();
+        PromptBox.Focus();
+    }
+
+    // ---- Attachments ----
+
+    private void Attach_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = "Attach files for all AIs",
+            Multiselect = true,
+            Filter = "All files|*.*|Images|*.png;*.jpg;*.jpeg;*.gif;*.webp;*.bmp|Documents|*.pdf;*.txt;*.md;*.csv;*.docx;*.xlsx;*.pptx",
+        };
+        if (dialog.ShowDialog(Window.GetWindow(this)) == true) AddFiles(dialog.FileNames);
+    }
+
+    private static bool HasFiles(DragEventArgs e) => e.Data.GetDataPresent(DataFormats.FileDrop);
+
+    private void PromptBar_PreviewDragOver(object sender, DragEventArgs e)
+    {
+        if (!HasFiles(e)) return;   // let text drags reach the text box as usual
+        e.Effects = DragDropEffects.Copy;
+        e.Handled = true;
+        PromptBarBorder.SetResourceReference(Border.BorderBrushProperty, "Accent");
+    }
+
+    private void PromptBar_PreviewDragLeave(object sender, DragEventArgs e)
+    {
+        PromptBarBorder.SetResourceReference(Border.BorderBrushProperty, "CardBorder");
+    }
+
+    private void PromptBar_PreviewDrop(object sender, DragEventArgs e)
+    {
+        PromptBarBorder.SetResourceReference(Border.BorderBrushProperty, "CardBorder");
+        if (!HasFiles(e) || e.Data.GetData(DataFormats.FileDrop) is not string[] paths) return;
+        e.Handled = true;
+        AddFiles(paths);
+    }
+
+    private void AddFiles(IEnumerable<string> paths)
+    {
+        var skipped = new List<string>();
+        foreach (var path in paths)
+        {
+            try
+            {
+                if (Directory.Exists(path)) { skipped.Add($"{Path.GetFileName(path)} (folder)"); continue; }
+                var size = new FileInfo(path).Length;
+                if (_attachments.Sum(a => a.Size) + size > Attachment.MaxTotalBytes)
+                {
+                    skipped.Add($"{Path.GetFileName(path)} (over the 25 MB total)");
+                    continue;
+                }
+                if (_attachments.Any(a => a.Name == Path.GetFileName(path) && a.Size == size)) continue;
+                _attachments.Add(Attachment.FromFile(path));
+            }
+            catch (Exception ex)
+            {
+                skipped.Add($"{Path.GetFileName(path)} ({ex.Message})");
+            }
+        }
+        if (skipped.Count > 0)
+            MessageBox.Show(Window.GetWindow(this)!, "These files weren't attached:\n\n" + string.Join("\n", skipped),
+                "Attach files", MessageBoxButton.OK, MessageBoxImage.Information);
+        PromptBox.Focus();
+    }
+
+    private void RemoveAttachment_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: Attachment a }) _attachments.Remove(a);
+    }
+
     private async Task SendToAllAsync()
     {
         var prompt = PromptBox.Text.Trim();
+        if (prompt.Length == 0 && _attachments.Count > 0)
+        {
+            Placeholder.Text = "Type a message to send with your files…";
+            PromptBox.Focus();
+            return;
+        }
         if (prompt.Length == 0 || !SendButton.IsEnabled) return;
 
         var panes = VisiblePanes.ToList();
@@ -164,8 +268,10 @@ public partial class ChatView : UserControl
         try
         {
             // Send to every visible site at the same time.
-            var answerTasks = await Task.WhenAll(panes.Select(p => p.SendPromptAsync(prompt, capture)));
+            var files = _attachments.ToList();
+            var answerTasks = await Task.WhenAll(panes.Select(p => p.SendPromptAsync(prompt, capture, files)));
             PromptBox.Clear();
+            _attachments.Clear();
 
             // Collect the answers in the background as each site finishes.
             for (var i = 0; i < panes.Count; i++)

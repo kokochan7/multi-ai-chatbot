@@ -32,12 +32,27 @@
 
                 <!-- Bottom: settings and version -->
                 <StackPanel DockPanel.Dock="Bottom">
+                    <!-- Shown when a newer version has been published while the app is open -->
+                    <Button x:Name="UpdateBanner" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Stretch"
+                            Margin="4,0,4,12" Padding="10,7" Visibility="Collapsed" Click="UpdateBanner_Click"
+                            ToolTip="Download the new version and restart the app">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE896;" FontFamily="{StaticResource IconFont}" FontSize="12"
+                                       VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <TextBlock x:Name="UpdateBannerText" Text="Update available" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
                     <Border Height="1" Background="{DynamicResource Divider}" Margin="4,0,4,10"/>
                     <RadioButton x:Name="NavSettings" GroupName="Nav"
                                  Style="{StaticResource NavButton}" Tag="&#xE713;" Content="Settings"
                                  Checked="Nav_Checked"/>
-                    <TextBlock x:Name="VersionLabel" FontSize="11" Foreground="{DynamicResource TextMuted}"
-                               Margin="12,10,0,0"/>
+                    <DockPanel Margin="12,8,0,0">
+                        <Button DockPanel.Dock="Right" Content="Reset view" Style="{StaticResource QuietLinkButton}"
+                                ToolTip="Put the menu width, column sizes and order, and chat box back to how they started"
+                                Click="ResetView_Click"/>
+                        <TextBlock x:Name="VersionLabel" FontSize="11" Foreground="{DynamicResource TextMuted}"
+                                   VerticalAlignment="Center"/>
+                    </DockPanel>
                 </StackPanel>
 
                 <!-- Start a fresh chat on every AI site -->

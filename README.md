@@ -12,7 +12,7 @@ Every change merged to `main` is built by GitHub and published as a release.
 2. Download `MultiAIChatbot.exe`.
 3. Double-click it. No install is needed.
 
-After that you don't need to download it again: the app checks for a new version when it starts, and **Settings → Updates → Check for updates** installs the newest build and restarts the app. Keep the .exe in a folder you can write to (like Documents or Desktop), so it can replace itself.
+After that you don't need to download it again: the app checks for a new version when it starts and every 20 minutes while open (an **Update to …** button appears in the left menu), and **Settings → Updates → Check for updates** installs the newest build and restarts the app. Keep the .exe in a folder you can write to (like Documents or Desktop), so it can replace itself.
 
 The app needs the Microsoft Edge WebView2 Runtime, which comes with Windows 10 and 11.
 
@@ -22,9 +22,9 @@ Log in to ChatGPT, Claude and Gemini once, inside their columns. Your logins are
 
 ## Asking all three
 
-Type in the box at the bottom and press **Enter** (Shift+Enter adds a new line). The app types your question into ChatGPT, Claude and Gemini and presses Send on each. Each column shows a short status ("Sent", or what went wrong). The **New Chat** button at the top of the left menu starts a new chat on all three sites.
+Type in the box at the bottom and press **Enter** (Shift+Enter adds a new line). To include files or images, drop them on the box or click the paperclip; they're attached on every site before your question is sent (up to 25 MB in total). If the box has grown, the shrink button next to Send puts it back to one line. The app types your question into ChatGPT, Claude and Gemini and presses Send on each. Each column shows a short status ("Sent", or what went wrong). The **New Chat** button at the top of the left menu starts a new chat on all three sites.
 
-Drag a column by its header bar to move it, and drag the gaps between columns (or the edge of the left menu) to resize them. The app remembers the order and sizes. Your past questions are listed under Recent in the left menu, with a search box and Clear all; click one to see all its answers on the History page.
+Drag a column by its header bar to move it, and drag the gaps between columns (or the edge of the left menu) to resize them. The app remembers the order and sizes, and **Reset view** at the bottom of the left menu puts everything back to the default layout. Your past questions are listed under Recent in the left menu, with a search box and Clear all; click one to see all its answers on the History page.
 
 If a site changes its page and sending stops working there, the fix is usually a one-line update to `src/MultiAIChatbot/Services/AiSites.cs`.
 

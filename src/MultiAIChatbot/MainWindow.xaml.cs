@@ -12,6 +12,12 @@ public partial class MainWindow : Window
             NavChat.IsChecked = true;
             ChatPage.SetPrompt(prompt);
         };
+
+        Loaded += async (_, _) =>
+        {
+            if (Services.AppState.Settings.CheckForUpdatesOnStartup)
+                await SettingsPage.CheckAsync(askToInstall: true, quiet: true);
+        };
     }
 
     private void Nav_Checked(object sender, RoutedEventArgs e)

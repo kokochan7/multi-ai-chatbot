@@ -9,12 +9,15 @@ public partial class SettingsView : UserControl
     public sealed record ColumnRow(string Key, string Name, bool Shown);
 
     private bool _loading;
+    private UpdateInfo? _pendingUpdate;
+    private bool _busy;
 
     public SettingsView()
     {
         InitializeComponent();
         DataFolderText.Text = "Your website logins, history and settings are stored only on this PC, in " +
                               AppState.Folder;
+        VersionText.Text = $"You have version {Updater.CurrentVersionText}.";
         Refresh();
     }
 
@@ -26,6 +29,7 @@ public partial class SettingsView : UserControl
             .Select(k => new ColumnRow(k, AiSites.DisplayName(k), !s.HiddenSites.Contains(k)))
             .ToList();
         SaveAnswersBox.IsChecked = s.SaveAnswers;
+        AutoCheckBox.IsChecked = s.CheckForUpdatesOnStartup;
         _loading = false;
     }
 
@@ -95,6 +99,93 @@ public partial class SettingsView : UserControl
         catch (Exception ex)
         {
             StatusText.Text = $"Couldn't log out: {ex.Message}";
+        }
+    }
+
+    private void AutoCheck_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_loading) return;
+        AppState.Settings.CheckForUpdatesOnStartup = AutoCheckBox.IsChecked == true;
+        AppState.SaveSettings();
+    }
+
+    private async void Update_Click(object sender, RoutedEventArgs e)
+    {
+        if (_busy) return;
+        if (_pendingUpdate is { } ready)
+        {
+            await InstallAsync(ready);
+            return;
+        }
+        await CheckAsync(askToInstall: false);
+    }
+
+    /// <summary>
+    /// Checks GitHub for a newer build. Called by the button, and once at startup
+    /// (with <paramref name="quiet"/> so nothing shows unless there is an update).
+    /// </summary>
+    public async Task CheckAsync(bool askToInstall, bool quiet = false)
+    {
+        if (_busy) return;
+        _busy = true;
+        UpdateButton.IsEnabled = false;
+        if (!quiet) UpdateStatusText.Text = "Checking for updates...";
+        try
+        {
+            var update = await Updater.CheckAsync();
+            if (update is null)
+            {
+                if (!quiet) UpdateStatusText.Text = "You're on the latest version.";
+                return;
+            }
+
+            _pendingUpdate = update;
+            var newVersion = $"{update.Version.Major}.{update.Version.Minor}.{update.Version.Build}";
+            UpdateButton.Content = $"Update to {newVersion}";
+            UpdateStatusText.Text = $"Version {newVersion} is available. Click Update to install it and restart.";
+
+            if (askToInstall)
+            {
+                var answer = MessageBox.Show(Window.GetWindow(this)!,
+                    $"Version {newVersion} of Multi-AI Chatbot is available (you have {Updater.CurrentVersionText}).\n\n" +
+                    "Update now? The app will restart.",
+                    "Update available", MessageBoxButton.YesNo, MessageBoxImage.Information);
+                if (answer == MessageBoxResult.Yes)
+                {
+                    _busy = false;
+                    await InstallAsync(update);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            if (!quiet) UpdateStatusText.Text = $"Couldn't check for updates: {ex.Message}";
+        }
+        finally
+        {
+            _busy = false;
+            UpdateButton.IsEnabled = true;
+        }
+    }
+
+    private async Task InstallAsync(UpdateInfo update)
+    {
+        if (_busy) return;
+        _busy = true;
+        UpdateButton.IsEnabled = false;
+        var progress = new Progress<double>(p => UpdateStatusText.Text = $"Downloading update... {p:P0}");
+        UpdateStatusText.Text = "Downloading update...";
+        try
+        {
+            await Updater.DownloadAndInstallAsync(update, progress);
+            UpdateStatusText.Text = "Restarting...";
+            Application.Current.Shutdown();
+        }
+        catch (Exception ex)
+        {
+            UpdateStatusText.Text = $"Couldn't install the update: {ex.Message}";
+            _busy = false;
+            UpdateButton.IsEnabled = true;
         }
     }
 }

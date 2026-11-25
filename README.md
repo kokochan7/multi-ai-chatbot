@@ -4,11 +4,13 @@ A lightweight Windows app: type one prompt and see ChatGPT, Claude and Gemini an
 
 ## Download
 
-Every change is built automatically by GitHub. To get the latest build:
+Every change merged to `main` is built by GitHub and published as a release.
 
-1. Open the [Actions tab](../../actions/workflows/build.yml) and click the newest green run.
-2. Under **Artifacts**, download **MultiAIChatbot-win-x64** and unzip it.
-3. Double-click `MultiAIChatbot.exe`. No install is needed.
+1. Open the [latest release](../../releases/latest).
+2. Download `MultiAIChatbot.exe`.
+3. Double-click it. No install is needed.
+
+After that you don't need to download it again: the app checks for a new version when it starts, and **Settings → Updates → Check for updates** installs the newest build and restarts the app. Keep the .exe in a folder you can write to (like Documents or Desktop), so it can replace itself.
 
 The app needs the Microsoft Edge WebView2 Runtime, which comes with Windows 10 and 11.
 
@@ -25,7 +27,7 @@ If a site changes its page and sending stops working there, the fix is usually a
 ## History and Settings
 
 - **History** saves every question, plus each AI's answer once it finishes, on your PC. You can search, copy an answer, delete one entry, or use **Ask again**.
-- **Settings** lets you show or hide each AI, change the column order, turn answer saving on or off, clear history, and log out of all sites.
+- **Settings** lets you show or hide each AI, change the column order, turn answer saving on or off, clear history, log out of all sites, and update the app.
 
 Everything is stored in `%LOCALAPPDATA%\MultiAIChatbot` and never leaves your PC.
 

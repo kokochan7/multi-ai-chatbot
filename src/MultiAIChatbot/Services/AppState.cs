@@ -14,6 +14,7 @@ public sealed class AppSettings
     public List<string> ColumnOrder { get; set; } = new(AiSites.AllKeys);
     public List<string> HiddenSites { get; set; } = new();
     public bool SaveAnswers { get; set; } = true;
+    public bool CheckForUpdatesOnStartup { get; set; } = true;
 }
 
 /// <summary>One question and the three answers to it.</summary>

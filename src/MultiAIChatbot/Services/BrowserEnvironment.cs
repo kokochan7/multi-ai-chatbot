@@ -21,6 +21,16 @@ public static class BrowserEnvironment
         return _environment ??= CreateAsync();
     }
 
+    /// <summary>
+    /// Forgets a browser environment whose process crashed, so the next GetAsync starts a new one.
+    /// Columns share one environment, so only the first column to recover resets it.
+    /// </summary>
+    public static void Reset(CoreWebView2Environment dead)
+    {
+        if (_environment is { IsCompletedSuccessfully: true } task && ReferenceEquals(task.Result, dead))
+            _environment = null;
+    }
+
     private static Task<CoreWebView2Environment> CreateAsync()
     {
         Directory.CreateDirectory(DataFolder);

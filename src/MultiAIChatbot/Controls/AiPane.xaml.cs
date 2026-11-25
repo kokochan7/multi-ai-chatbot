@@ -84,6 +84,20 @@ public partial class AiPane : UserControl
         core.Settings.AreDevToolsEnabled = true;
         core.NavigationCompleted += (_, _) => UpdateButtons();
         core.HistoryChanged += (_, _) => UpdateButtons();
+        core.ProcessFailed += (_, args) =>
+        {
+            CrashLog.Write($"{Title} page process failed: {args.ProcessFailedKind}, {args.Reason}, exit code {args.ExitCode}", null);
+            if (args.ProcessFailedKind == CoreWebView2ProcessFailedKind.RenderProcessExited ||
+                args.ProcessFailedKind == CoreWebView2ProcessFailedKind.RenderProcessUnresponsive)
+            {
+                ShowStatus("Page crashed, reloading…", isError: true);
+                try { Browser.CoreWebView2?.Reload(); } catch { /* the browser may already be gone */ }
+            }
+            else
+            {
+                ShowStatus("Browser stopped. Restart the app if this column stays blank.", isError: true);
+            }
+        };
 
         ApplyColorScheme();
         Theme.Changed += ApplyColorScheme;

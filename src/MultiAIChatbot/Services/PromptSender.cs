@@ -251,6 +251,7 @@ public static class PromptSender
     {
         var deadline = DateTime.UtcNow + (timeout ?? TimeSpan.FromMinutes(4));
         var lastText = "";
+        var lastInfo = "";
         var stableSince = DateTime.UtcNow;
 
         while (DateTime.UtcNow < deadline)
@@ -266,6 +267,7 @@ public static class PromptSender
                 continue;   // The page may be navigating.
             }
 
+            lastInfo = snap.Info;
             if (snap.Count <= countBefore || snap.Text.Length == 0) continue;
 
             if (snap.Text != lastText)
@@ -280,10 +282,31 @@ public static class PromptSender
                 return lastText;
             }
         }
+        if (lastText.Length == 0) LogMissedAnswer(countBefore, lastInfo);
         return lastText;
     }
 
-    private sealed record AnswerSnapshot(int Count, string Text, bool Streaming);
+    /// <summary>
+    /// Notes what the page looked like when no answer could be read, in capture-log.txt next to
+    /// the history, so a site's new layout can be fixed from it. Keeps only the newest entries.
+    /// </summary>
+    private static void LogMissedAnswer(int countBefore, string info)
+    {
+        try
+        {
+            var file = Path.Combine(AppState.Folder, "capture-log.txt");
+            var lines = File.Exists(file) ? File.ReadAllLines(file).TakeLast(40).ToList() : new List<string>();
+            lines.Add($"{DateTime.Now:yyyy-MM-dd HH:mm:ss} no answer read (answers before: {countBefore}) {info}");
+            Directory.CreateDirectory(AppState.Folder);
+            File.WriteAllLines(file, lines);
+        }
+        catch
+        {
+            // Logging must never get in the way of the chat.
+        }
+    }
+
+    private sealed record AnswerSnapshot(int Count, string Text, bool Streaming, string Info);
 
     /// <summary>
     /// Reads one answer already on the page (for History's Refresh). <paramref name="index"/> counts
@@ -309,7 +332,8 @@ public static class PromptSender
         return new AnswerSnapshot(
             root.GetProperty("count").GetInt32(),
             root.GetProperty("text").GetString() ?? "",
-            root.GetProperty("streaming").GetBoolean());
+            root.GetProperty("streaming").GetBoolean(),
+            root.TryGetProperty("info", out var info) ? info.GetString() ?? "" : "");
     }
 
     /// <summary>Runs a script and returns its result as a plain string.</summary>

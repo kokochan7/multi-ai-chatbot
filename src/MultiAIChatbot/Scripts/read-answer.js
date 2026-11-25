@@ -2,13 +2,22 @@
 // leaving out the site's own buttons, icons, "Searched the web" steps and source chips.
 // The C# side fills in the site config (JSON with answerSelectors) and which answer to read
 // (__INDEX__: -1 for the newest, or 0, 1, 2… counting from the first answer on the page).
-// Returns JSON: { count: number of answers on the page, text: newest answer, streaming: bool }
+// Returns JSON: { count: number of answers on the page, text: newest answer, streaming: bool,
+//   info: what the page looked like, written to a log when no answer could be read }
 (() => {
   const config = __CONFIG__;
+  // Uses the first selector that finds answers with text in them. Empty placeholders (a
+  // "thinking" step, a row kept for buttons) are left out so they don't count as the answer.
+  const hasText = el => (el.innerText || el.textContent || '').trim().length > 0;
   let nodes = [];
+  const diag = [];
   for (const sel of config.answerSelectors) {
-    nodes = Array.from(document.querySelectorAll(sel));
-    if (nodes.length) break;
+    let found = [];
+    try { found = Array.from(document.querySelectorAll(sel)); } catch (e) { }
+    const withText = found.filter(hasText);
+    diag.push(sel + '=' + found.length + '/' + withText.length);
+    if (!nodes.length && withText.length)
+      nodes = withText.filter(n => !withText.some(o => o !== n && o.contains(n)));   // outermost only
   }
   const index = __INDEX__;
   const last = index >= 0 ? nodes[index] : nodes[nodes.length - 1];
@@ -111,7 +120,7 @@
 
   const toMarkdown = root => {
     if (!root) return '';
-    let blocks = Array.from(root.querySelectorAll(CONTENT));
+    let blocks = root.matches(CONTENT) ? [root] : Array.from(root.querySelectorAll(CONTENT));
     blocks = blocks.filter(b => !blocks.some(o => o !== b && o.contains(b)));   // outermost only
     const parts = (blocks.length ? blocks : [root]).map(b => convert(b, false, 0));
     return parts.join('\n\n')
@@ -124,5 +133,9 @@
   let text = '';
   try { text = toMarkdown(last); } catch (e) { text = ''; }
   if (!text && last) text = last.innerText.trim();
-  return JSON.stringify({ count: nodes.length, text, streaming });
+  const info = location.pathname + location.search + ' | ' + diag.join(' ') +
+    ' | author-role=' + document.querySelectorAll('[data-message-author-role]').length +
+    ' turn=' + document.querySelectorAll('[data-turn]').length +
+    ' markdown=' + document.querySelectorAll('.markdown, [data-assistant-markdown-root]').length;
+  return JSON.stringify({ count: nodes.length, text, streaming, info });
 })();

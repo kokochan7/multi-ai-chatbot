@@ -245,10 +245,13 @@ public static class PromptSender
     /// <summary>
     /// Waits for a new answer to appear and finish (its text stops changing),
     /// then returns its text. Returns "" if nothing arrives within the time limit.
+    /// <paramref name="onProgress"/> gets the answer so far each time it grows, so it can be shown live.
     /// </summary>
     public static async Task<string> WaitForAnswerAsync(CoreWebView2 core, SiteSelectors site, int countBefore,
-        TimeSpan? timeout = null)
+        Action<string>? onProgress = null, TimeSpan? timeout = null)
     {
+        var started = DateTime.UtcNow;
+        var logged = false;
         var deadline = DateTime.UtcNow + (timeout ?? TimeSpan.FromMinutes(4));
         var lastText = "";
         var lastInfo = "";
@@ -268,12 +271,22 @@ public static class PromptSender
             }
 
             lastInfo = snap.Info;
-            if (snap.Count <= countBefore || snap.Text.Length == 0) continue;
+            if (snap.Count <= countBefore || snap.Text.Length == 0)
+            {
+                // Nothing to read after a minute: note what the page looks like (once) while still waiting.
+                if (!logged && lastText.Length == 0 && DateTime.UtcNow - started > TimeSpan.FromMinutes(1))
+                {
+                    logged = true;
+                    LogMissedAnswer(countBefore, lastInfo);
+                }
+                continue;
+            }
 
             if (snap.Text != lastText)
             {
                 lastText = snap.Text;
                 stableSince = DateTime.UtcNow;
+                try { onProgress?.Invoke(lastText); } catch { /* showing progress must not stop the wait */ }
             }
             else if (DateTime.UtcNow - stableSince > TimeSpan.FromSeconds(snap.Streaming ? 20 : 3))
             {
@@ -282,7 +295,7 @@ public static class PromptSender
                 return lastText;
             }
         }
-        if (lastText.Length == 0) LogMissedAnswer(countBefore, lastInfo);
+        if (lastText.Length == 0 && !logged) LogMissedAnswer(countBefore, lastInfo);
         return lastText;
     }
 

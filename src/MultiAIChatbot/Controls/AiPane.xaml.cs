@@ -326,7 +326,7 @@ public partial class AiPane : UserControl
     /// answer's text once the site is done replying ("" if it couldn't be read), or null if sending failed.
     /// </summary>
     public async Task<Task<string>?> SendPromptAsync(string prompt, bool captureAnswer,
-        IReadOnlyList<Attachment>? files = null)
+        IReadOnlyList<Attachment>? files = null, Action<string>? onProgress = null)
     {
         var site = AiSites.ByKey(SiteKey);
         var core = Core;
@@ -363,7 +363,7 @@ public partial class AiPane : UserControl
 
         if (result is SendResult.NoChatBox or SendResult.FilesNeedSignIn or SendResult.FilesNotAttached or SendResult.Error) return null;
         return captureAnswer
-            ? PromptSender.WaitForAnswerAsync(core, site, countBefore)
+            ? PromptSender.WaitForAnswerAsync(core, site, countBefore, onProgress)
             : Task.FromResult("");
     }
 

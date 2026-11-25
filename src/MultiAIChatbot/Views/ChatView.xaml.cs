@@ -349,7 +349,9 @@ public partial class ChatView : UserControl
         {
             // Send to every visible site at the same time.
             var files = _attachments.ToList();
-            var answerTasks = await Task.WhenAll(panes.Select(p => p.SendPromptAsync(prompt, capture, files)));
+            // Each answer shows in History as it's being written, not only once it's done.
+            var answerTasks = await Task.WhenAll(panes.Select(p => p.SendPromptAsync(prompt, capture, files,
+                capture ? text => ShowPartialAnswer(entry, p.SiteKey, text) : null)));
             PromptBox.Clear();
             _attachments.Clear();
 
@@ -367,13 +369,27 @@ public partial class ChatView : UserControl
         }
     }
 
+    private static DateTime _lastPartialSave = DateTime.MinValue;
+
+    /// <summary>Shows the answer so far in History, saving it to disk every few seconds.</summary>
+    private static void ShowPartialAnswer(HistoryEntry entry, string siteKey, string text)
+    {
+        if (text.Length == 0 || !AppState.History.Contains(entry)) return;
+        entry.SetAnswer(siteKey, text);
+        if (DateTime.UtcNow - _lastPartialSave > TimeSpan.FromSeconds(5))
+        {
+            _lastPartialSave = DateTime.UtcNow;
+            AppState.SaveHistory();
+        }
+    }
+
     private static async Task SaveAnswerWhenReadyAsync(HistoryEntry entry, string siteKey, Task<string> answerTask)
     {
         try
         {
             var text = await answerTask;
-            if (text.Length == 0 || !AppState.History.Contains(entry)) return;
-            entry.SetAnswer(siteKey, text);
+            if (!AppState.History.Contains(entry)) return;
+            if (text.Length > 0) entry.SetAnswer(siteKey, text);   // else keep whatever arrived live
             AppState.SaveHistory();
         }
         catch

@@ -37,6 +37,8 @@ public partial class MainWindow : Window
             ChatPage.SetPrompt(prompt);
         };
 
+        SettingsPage.ShowChatRequested += () => NavChat.IsChecked = true;
+
         SettingsPage.UpdateFound += version =>
         {
             UpdateBannerText.Text = $"Update to {version}";

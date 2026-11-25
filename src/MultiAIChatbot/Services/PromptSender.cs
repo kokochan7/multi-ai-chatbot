@@ -5,7 +5,7 @@ using Microsoft.Web.WebView2.Core;
 
 namespace MultiAIChatbot.Services;
 
-public enum SendResult { Sent, NoChatBox, SendButtonNotFound, FilesNeedSignIn, Error }
+public enum SendResult { Sent, NoChatBox, SendButtonNotFound, FilesNeedSignIn, FilesNotAttached, Error }
 
 /// <summary>
 /// Types a prompt into a site's chat box and presses Send, using small scripts run inside the page.
@@ -34,7 +34,7 @@ public static class PromptSender
                 if (site.TrustedFileDrop)
                 {
                     var outcome = await AttachWithRealDropAsync(core, site, config, files!);
-                    if (outcome == SendResult.FilesNeedSignIn) return outcome;
+                    if (outcome is SendResult.FilesNeedSignIn or SendResult.FilesNotAttached) return outcome;
                 }
                 else
                 {
@@ -89,21 +89,41 @@ public static class PromptSender
     }
 
     /// <summary>
-    /// Drops the files on the chat box the way a real mouse drop from File Explorer would,
-    /// using the browser's own DevTools input. Sites can't tell this from a person's drop,
-    /// unlike script-made paste events, which Gemini ignores.
-    /// Returns FilesNeedSignIn when nothing got attached and the site shows a "Sign in" button.
+    /// Attaches files in ways sites can't tell from a person's own actions, using the browser's
+    /// DevTools input (script-made paste events are ignored by Gemini):
+    /// 1. a real drop on the chat box, 2. filling the page's file picker, 3. the script way.
+    /// After each it waits for a preview of the file. If none shows up it returns FilesNeedSignIn
+    /// (the site shows a "Sign in" button) or FilesNotAttached (pictures that never appeared),
+    /// so the question isn't sent without the file.
     /// </summary>
     private static async Task<SendResult> AttachWithRealDropAsync(CoreWebView2 core, SiteSelectors site, string config,
         IReadOnlyList<Attachment> files)
     {
         var before = await CheckAttachAsync(core, config);
-        var dropped = false;
-        if (before.X >= 0)
+
+        async Task<bool> PreviewAppearedAsync(int tries)
+        {
+            for (var i = 0; i < tries; i++)
+            {
+                await Task.Delay(200);
+                try
+                {
+                    if ((await CheckAttachAsync(core, config)).Attached > before.Attached) return true;
+                }
+                catch { /* the page may be busy */ }
+            }
+            return false;
+        }
+
+        List<string> paths;
+        try { paths = WriteUploadFiles(files); }
+        catch { paths = new List<string>(); }
+
+        // 1. A real drop on the chat box.
+        if (before.X >= 0 && paths.Count > 0)
         {
             try
             {
-                var paths = WriteUploadFiles(files);
                 foreach (var type in new[] { "dragEnter", "dragOver", "drop" })
                 {
                     var args = JsonSerializer.Serialize(new
@@ -116,27 +136,68 @@ public static class PromptSender
                     await core.CallDevToolsProtocolMethodAsync("Input.dispatchDragEvent", args);
                     await Task.Delay(type == "drop" ? 0 : 150);   // let the page show its drop zone
                 }
-                dropped = true;
+                if (await PreviewAppearedAsync(25)) return SendResult.Sent;
             }
-            catch
-            {
-                // Older WebView2 runtimes may not support it; the script way below still runs.
-            }
+            catch { /* older WebView2 runtimes may not support it */ }
         }
 
-        // Wait for a preview of the file to show up in the chat box.
-        for (var i = 0; i < 25; i++)
-        {
-            await Task.Delay(200);
-            if ((await CheckAttachAsync(core, config)).Attached > before.Attached) return SendResult.Sent;
-        }
+        // 2. Fill the page's own file picker, as if the user had chosen the files in it.
+        if (paths.Count > 0 && await SetFileInputAsync(core, paths, files) && await PreviewAppearedAsync(20))
+            return SendResult.Sent;
 
         if (before.SignedOut) return SendResult.FilesNeedSignIn;
 
-        // Not sure it worked (the preview may look different): try the script way as well.
-        if (!dropped)
+        // 3. The script way.
+        try
+        {
             await RunAsync(core, AttachScript.Replace("__CONFIG__", config).Replace("__FILES__", FilesJson(files)));
-        return SendResult.Sent;
+            if (await PreviewAppearedAsync(15)) return SendResult.Sent;
+        }
+        catch { }
+
+        // Pictures always show a preview, so none means it didn't work. Other files may
+        // look different, so send anyway.
+        return files.All(f => f.IsImage) ? SendResult.FilesNotAttached : SendResult.Sent;
+    }
+
+    private const string MarkFileInputScript = @"(() => {
+  const files = __FILES__;
+  const ok = (input) => {
+    const accept = (input.accept || '').trim().toLowerCase();
+    if (!accept) return true;
+    const list = accept.split(',').map(a => a.trim());
+    return files.every(f => list.some(a => a === f.type || (a.endsWith('/*') && f.type.startsWith(a.slice(0, -1))) ||
+      (a.startsWith('.') && f.name.toLowerCase().endsWith(a))));
+  };
+  document.querySelectorAll('input[data-mac-upload]').forEach(i => i.removeAttribute('data-mac-upload'));
+  const input = Array.from(document.querySelectorAll('input[type=""file""]'))
+    .find(i => !i.disabled && (i.multiple || files.length === 1) && ok(i));
+  if (!input) return 'none';
+  input.setAttribute('data-mac-upload', '1');
+  return 'ok';
+})();";
+
+    private static async Task<bool> SetFileInputAsync(CoreWebView2 core, List<string> paths, IReadOnlyList<Attachment> files)
+    {
+        try
+        {
+            var meta = JsonSerializer.Serialize(files.Select(f => new { name = f.Name, type = f.MimeType.ToLowerInvariant() }));
+            if (await RunAsync(core, MarkFileInputScript.Replace("__FILES__", meta)) != "ok") return false;
+
+            using var docJson = JsonDocument.Parse(await core.CallDevToolsProtocolMethodAsync("DOM.getDocument", "{\"depth\":0}"));
+            var rootId = docJson.RootElement.GetProperty("root").GetProperty("nodeId").GetInt32();
+            using var found = JsonDocument.Parse(await core.CallDevToolsProtocolMethodAsync("DOM.querySelector",
+                JsonSerializer.Serialize(new { nodeId = rootId, selector = "input[data-mac-upload]" })));
+            var nodeId = found.RootElement.GetProperty("nodeId").GetInt32();
+            if (nodeId == 0) return false;
+            await core.CallDevToolsProtocolMethodAsync("DOM.setFileInputFiles",
+                JsonSerializer.Serialize(new { files = paths, nodeId }));
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     /// <summary>Writes the files to a temporary folder so the browser can read them like a real drop.</summary>
@@ -212,8 +273,10 @@ public static class PromptSender
                 lastText = snap.Text;
                 stableSince = DateTime.UtcNow;
             }
-            else if (!snap.Streaming && DateTime.UtcNow - stableSince > TimeSpan.FromSeconds(3))
+            else if (DateTime.UtcNow - stableSince > TimeSpan.FromSeconds(snap.Streaming ? 20 : 3))
             {
+                // Done: the text stopped changing. If the page still looks busy (a leftover
+                // Stop button), a longer pause counts as finished too.
                 return lastText;
             }
         }

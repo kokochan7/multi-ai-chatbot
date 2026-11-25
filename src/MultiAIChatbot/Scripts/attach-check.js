@@ -30,8 +30,9 @@
     if (visible(el)) previews.add(el);
   });
 
-  const signedOut = Array.from(document.querySelectorAll('a, button'))
-    .some(el => visible(el) && /^\s*sign in\s*$/i.test(el.textContent || ''));
+  const signedOut = Array.from(document.querySelectorAll('a, button, [role="button"]'))
+    .some(el => visible(el) && (/^\s*(sign in|log in)\s*$/i.test(el.textContent || '') ||
+      /accounts\.google\.com\/(ServiceLogin|signin)/i.test(el.getAttribute('href') || '')));
 
   return JSON.stringify({ x, y, attached: previews.size, signedOut });
 })();

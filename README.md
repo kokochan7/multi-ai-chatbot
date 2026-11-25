@@ -30,7 +30,7 @@ If a site changes its page and sending stops working there, the fix is usually a
 
 ## History and Settings
 
-- **History** saves every question, plus each AI's answer once it finishes, on your PC. Pick a chat under **Recent** in the left menu (with search) to see each of its questions with the answers side by side, copy an answer, use **Ask again**, or delete the chat.
+- **History** saves every question, plus each AI's answer once it finishes, on your PC. Pick a chat under **Recent** in the left menu (with search) to see each of its questions with the answers side by side (shown as formatted text with headings, lists, links and code), copy an answer, use **Ask again**, or delete the chat.
 - **Settings** lets you pick a light or dark theme (or follow Windows), show or hide each AI, change the column order, turn answer saving on or off, clear history, log out of all sites, and update the app.
 
 Everything is stored in `%LOCALAPPDATA%\MultiAIChatbot` and never leaves your PC.

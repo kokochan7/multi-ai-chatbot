@@ -51,7 +51,8 @@ public partial class HistoryView : UserControl
             "gemini" => entry.Gemini,
             _ => ""
         };
-        if (text.Length > 0) Clipboard.SetText(text);
+        var plain = MarkdownRenderer.ToPlainText(text);
+        if (plain.Length > 0 && !string.IsNullOrWhiteSpace(text)) Clipboard.SetText(plain);
     }
 
     private void Delete_Click(object sender, RoutedEventArgs e)

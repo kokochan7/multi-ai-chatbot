@@ -42,8 +42,47 @@ jobs:
 
       # Every push to main becomes a GitHub Release. The app downloads its
       # updates from the latest release (no sign-in needed, unlike Actions artifacts).
+      # GitHub's API sometimes has short outages (500/502 errors), so if publishing
+      # fails, wait and try again before giving up. Re-running for the same tag
+      # updates the existing release, so retries are safe.
       - name: Publish release (main only)
+        id: release1
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        continue-on-error: true
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.APP_VERSION }}
+          name: Multi-AI Chatbot ${{ env.APP_VERSION }}
+          target_commitish: ${{ github.sha }}
+          generate_release_notes: true
+          make_latest: 'true'
+          files: publish/MultiAIChatbot.exe
+
+      - name: Wait before retrying release
+        if: steps.release1.outcome == 'failure'
+        shell: bash
+        run: sleep 90
+
+      - name: Publish release (retry)
+        id: release2
+        if: steps.release1.outcome == 'failure'
+        continue-on-error: true
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.APP_VERSION }}
+          name: Multi-AI Chatbot ${{ env.APP_VERSION }}
+          target_commitish: ${{ github.sha }}
+          generate_release_notes: true
+          make_latest: 'true'
+          files: publish/MultiAIChatbot.exe
+
+      - name: Wait before last release attempt
+        if: steps.release2.outcome == 'failure'
+        shell: bash
+        run: sleep 240
+
+      - name: Publish release (last try)
+        if: steps.release2.outcome == 'failure'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ env.APP_VERSION }}

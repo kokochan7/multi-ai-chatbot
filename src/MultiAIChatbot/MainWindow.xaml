@@ -118,7 +118,7 @@
                       DragCompleted="SidebarSplitter_DragCompleted"/>
 
         <!-- Pages. All stay loaded so the AI sites keep their state when you switch pages. -->
-        <Grid Grid.Column="2" Margin="10,16,16,16">
+        <Grid Grid.Column="2" Margin="2,6,6,6">
             <v:ChatView x:Name="ChatPage"/>
             <v:HistoryView x:Name="HistoryPage" Visibility="Collapsed"/>
             <v:SettingsView x:Name="SettingsPage" Visibility="Collapsed"/>

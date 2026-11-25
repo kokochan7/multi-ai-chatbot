@@ -92,6 +92,9 @@ public partial class SettingsView : UserControl
             .Select(k => new ColumnRow(k, AiSites.DisplayName(k), !s.HiddenSites.Contains(k)))
             .ToList();
         SaveAnswersBox.IsChecked = s.SaveAnswers;
+        PrivateChatGptBox.IsChecked = s.PrivateChatGpt;
+        PrivateClaudeBox.IsChecked = s.PrivateClaude;
+        PrivateGeminiBox.IsChecked = s.PrivateGemini;
         AutoCheckBox.IsChecked = s.CheckForUpdatesOnStartup;
         ThemeSystem.IsChecked = s.Theme is not (Theme.LightMode or Theme.DarkMode);
         ThemeLight.IsChecked = s.Theme == Theme.LightMode;
@@ -144,6 +147,23 @@ public partial class SettingsView : UserControl
         (order[i], order[j]) = (order[j], order[i]);
         AppState.SaveSettings();
         Refresh();
+    }
+
+    private void Private_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_loading || sender is not CheckBox { Tag: string key } box) return;
+        var on = box.IsChecked == true;
+        var s = AppState.Settings;
+        switch (key)
+        {
+            case "chatgpt": s.PrivateChatGpt = on; break;
+            case "claude": s.PrivateClaude = on; break;
+            case "gemini": s.PrivateGemini = on; break;
+        }
+        AppState.SaveSettingsQuietly();
+        // Start a fresh chat on that site in the new mode.
+        if (AiPane.All.TryGetValue(key, out var pane)) pane.GoHome();
+        StatusText.Text = $"{AiSites.DisplayName(key)}: new chats {(on ? "start in " + AiSites.PrivateModeName(key) : "are normal chats")}.";
     }
 
     private void SaveAnswers_Changed(object sender, RoutedEventArgs e)

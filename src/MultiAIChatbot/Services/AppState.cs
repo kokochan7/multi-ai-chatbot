@@ -21,6 +21,18 @@ public sealed class AppSettings
     public double SidebarWidth { get; set; } = 232;
     /// <summary>Relative width of each AI column, by site key (drag the gaps to change).</summary>
     public Dictionary<string, double> ColumnWidths { get; set; } = new();
+    /// <summary>Start new chats in each site's private mode (not saved to the account's history).</summary>
+    public bool PrivateChatGpt { get; set; } = true;
+    public bool PrivateClaude { get; set; } = true;
+    public bool PrivateGemini { get; set; } = true;
+
+    public bool PrivateFor(string siteKey) => siteKey switch
+    {
+        "chatgpt" => PrivateChatGpt,
+        "claude" => PrivateClaude,
+        "gemini" => PrivateGemini,
+        _ => false,
+    };
 }
 
 /// <summary>One question and the three answers to it.</summary>

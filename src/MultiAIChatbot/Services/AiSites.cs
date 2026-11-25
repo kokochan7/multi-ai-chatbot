@@ -41,6 +41,31 @@ public static class AiSites
         _ => key
     };
 
+    /// <summary>
+    /// The start page, in the site's private mode when <paramref name="isPrivate"/> is set.
+    /// ChatGPT's Temporary Chat has its own address; Claude and Gemini are switched by a button
+    /// (see <see cref="PrivateButtonPattern"/>).
+    /// </summary>
+    public static string HomeUrl(string key, string normal, bool isPrivate) =>
+        isPrivate && key == "chatgpt" ? "https://chatgpt.com/?temporary-chat=true" : normal;
+
+    /// <summary>Label of the button that turns on private chat, for sites that need a click.</summary>
+    public static string? PrivateButtonPattern(string key) => key switch
+    {
+        "claude" => "incognito",
+        "gemini" => "temporary chat",
+        _ => null
+    };
+
+    /// <summary>What each site calls its private mode.</summary>
+    public static string PrivateModeName(string key) => key switch
+    {
+        "chatgpt" => "Temporary Chat",
+        "claude" => "Incognito chat",
+        "gemini" => "Temporary chat",
+        _ => "private chat"
+    };
+
     /// <summary>The site's sign-in page.</summary>
     public static string SignInUrl(string key) => key switch
     {

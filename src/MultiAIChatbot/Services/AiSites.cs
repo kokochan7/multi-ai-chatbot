@@ -15,9 +15,9 @@ public sealed record SiteSelectors(string[] EditorSelectors, string[] SendSelect
 public static class AiSites
 {
     public static readonly SiteSelectors ChatGpt = new(
-        EditorSelectors: new[] { "#prompt-textarea", "div.ProseMirror[contenteditable='true']", "textarea" },
-        SendSelectors: new[] { "button[data-testid='send-button']", "#composer-submit-button", "button[aria-label*='Send']" },
-        AnswerSelectors: new[] { "[data-message-author-role='assistant']", "article[data-turn='assistant']", "div.agent-turn" });
+        EditorSelectors: new[] { "#prompt-textarea", "div.ProseMirror[contenteditable='true']", "textarea[name='prompt']", "textarea" },
+        SendSelectors: new[] { "button[data-testid='send-button']", "#composer-submit-button", "button[aria-label='Send message']", "button[aria-label*='Send']" },
+        AnswerSelectors: new[] { "li[data-message-role='assistant']", "[data-message-author-role='assistant']", "article[data-turn='assistant']" });
 
     public static readonly SiteSelectors Claude = new(
         EditorSelectors: new[] { "div[contenteditable='true'].ProseMirror", "[data-testid='chat-input'] [contenteditable='true']", "div[contenteditable='true']" },

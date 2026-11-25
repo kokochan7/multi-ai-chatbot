@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Threading;
 using MultiAIChatbot.Services;
 
 namespace MultiAIChatbot;
@@ -37,21 +38,35 @@ public partial class MainWindow : Window
             ChatPage.SetPrompt(prompt);
         };
 
+        SettingsPage.UpdateFound += version =>
+        {
+            UpdateBannerText.Text = $"Update to {version}";
+            UpdateBanner.Visibility = Visibility.Visible;
+        };
+
         Loaded += async (_, _) =>
         {
-            if (AppState.Settings.CheckForUpdatesOnStartup)
-                await SettingsPage.CheckAsync(askToInstall: true, quiet: true);
+            if (!AppState.Settings.CheckForUpdatesOnStartup) return;
+            await SettingsPage.CheckAsync(askToInstall: true, quiet: true);
+
+            // The app often stays open for hours, so keep checking quietly. A new version
+            // shows an "Update to …" button in the menu instead of interrupting.
+            var timer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(20) };
+            timer.Tick += async (_, _) =>
+            {
+                if (AppState.Settings.CheckForUpdatesOnStartup && UpdateBanner.Visibility != Visibility.Visible)
+                    await SettingsPage.CheckAsync(askToInstall: false, quiet: true);
+            };
+            timer.Start();
         };
     }
 
     private void UpdateRecentEmpty()
     {
         var hasHistory = AppState.History.Count > 0;
-        var searching = SearchBox.Text.Trim().Length > 0;
         var anyShown = _recentView is { IsEmpty: false };
         RecentEmpty.Text = hasHistory ? "No matches." : "Your questions will show up here.";
         RecentEmpty.Visibility = anyShown ? Visibility.Collapsed : Visibility.Visible;
-        SearchPanel.Visibility = hasHistory || searching ? Visibility.Visible : Visibility.Collapsed;
         ClearAllButton.Visibility = hasHistory ? Visibility.Visible : Visibility.Collapsed;
     }
 
@@ -118,6 +133,28 @@ public partial class MainWindow : Window
         HistoryPage.Show(entry);
         NavHistory.IsChecked = true;
         RecentList.SelectedItem = entry;
+    }
+
+    private async void UpdateBanner_Click(object sender, RoutedEventArgs e)
+    {
+        UpdateBanner.IsEnabled = false;
+        UpdateBannerText.Text = "Updating…";
+        if (await SettingsPage.InstallPendingAsync()) return;   // the app restarts
+        UpdateBanner.IsEnabled = true;
+        UpdateBannerText.Text = "Update failed, see Settings";
+    }
+
+    /// <summary>Puts the layout back to how it was when the app was first installed.</summary>
+    private void ResetView_Click(object sender, RoutedEventArgs e)
+    {
+        var s = AppState.Settings;
+        s.SidebarWidth = new AppSettings().SidebarWidth;
+        SidebarColumn.Width = new GridLength(s.SidebarWidth);
+        s.ColumnWidths.Clear();
+        s.ColumnOrder = AiSites.AllKeys.ToList();
+        AppState.SaveSettings();   // rearranges the columns
+        NavChat.IsChecked = true;
+        ChatPage.ShrinkPromptBox();
     }
 
     private void NewChat_Click(object sender, RoutedEventArgs e)

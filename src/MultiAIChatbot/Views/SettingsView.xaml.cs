@@ -10,6 +10,21 @@ public partial class SettingsView : UserControl
 
     private bool _loading;
     private UpdateInfo? _pendingUpdate;
+
+    /// <summary>Raised when a newer version is found, with its version text (e.g. "1.0.25").</summary>
+    public event Action<string>? UpdateFound;
+
+    /// <summary>Installs the update found by the last check (used by the menu's update button).</summary>
+    /// <returns>false if installing failed (the reason is shown on the Settings page).</returns>
+    public async Task<bool> InstallPendingAsync()
+    {
+        if (_pendingUpdate is not { } ready)
+        {
+            await CheckAsync(askToInstall: true);
+            return true;
+        }
+        return await InstallAsync(ready);
+    }
     private bool _busy;
 
     public SettingsView()
@@ -158,6 +173,7 @@ public partial class SettingsView : UserControl
             var newVersion = $"{update.Version.Major}.{update.Version.Minor}.{update.Version.Build}";
             UpdateButton.Content = $"Update to {newVersion}";
             UpdateStatusText.Text = $"Version {newVersion} is available. Click Update to install it and restart.";
+            UpdateFound?.Invoke(newVersion);
 
             if (askToInstall)
             {
@@ -183,9 +199,9 @@ public partial class SettingsView : UserControl
         }
     }
 
-    private async Task InstallAsync(UpdateInfo update)
+    private async Task<bool> InstallAsync(UpdateInfo update)
     {
-        if (_busy) return;
+        if (_busy) return false;
         _busy = true;
         UpdateButton.IsEnabled = false;
         var progress = new Progress<double>(p => UpdateStatusText.Text = $"Downloading update... {p:P0}");
@@ -195,12 +211,14 @@ public partial class SettingsView : UserControl
             await Updater.DownloadAndInstallAsync(update, progress);
             UpdateStatusText.Text = "Restarting...";
             Application.Current.Shutdown();
+            return true;
         }
         catch (Exception ex)
         {
             UpdateStatusText.Text = $"Couldn't install the update: {ex.Message}";
             _busy = false;
             UpdateButton.IsEnabled = true;
+            return false;
         }
     }
 }

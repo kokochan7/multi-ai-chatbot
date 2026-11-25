@@ -268,7 +268,8 @@ public partial class AiPane : UserControl
     /// Types the prompt into this site and presses Send. Returns a task that finishes with the
     /// answer's text once the site is done replying ("" if it couldn't be read), or null if sending failed.
     /// </summary>
-    public async Task<Task<string>?> SendPromptAsync(string prompt, bool captureAnswer)
+    public async Task<Task<string>?> SendPromptAsync(string prompt, bool captureAnswer,
+        IReadOnlyList<Attachment>? files = null)
     {
         var site = AiSites.ByKey(SiteKey);
         var core = Core;
@@ -278,9 +279,9 @@ public partial class AiPane : UserControl
             return null;
         }
 
-        ShowStatus("Sending…", isError: false);
+        ShowStatus(files is { Count: > 0 } ? "Uploading and sending…" : "Sending…", isError: false);
         var countBefore = captureAnswer ? await PromptSender.CountAnswersAsync(core, site) : 0;
-        var result = await PromptSender.SendAsync(core, site, prompt);
+        var result = await PromptSender.SendAsync(core, site, prompt, files);
         switch (result)
         {
             case SendResult.Sent:

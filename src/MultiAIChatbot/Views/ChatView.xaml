@@ -19,8 +19,11 @@
                       HomeUrl="https://gemini.google.com/app"/>
         </Grid>
 
-        <!-- Shared prompt box: one question goes to all three sites -->
-        <Grid Grid.Row="1" Margin="0,14,0,0" MaxWidth="1100">
+        <!-- Shared prompt box: one question (plus any attached files) goes to all three sites.
+             Drop files anywhere on it, or use the paperclip. -->
+        <Grid Grid.Row="1" Margin="0,14,0,0" MaxWidth="1100" AllowDrop="True"
+              PreviewDragEnter="PromptBar_PreviewDragOver" PreviewDragOver="PromptBar_PreviewDragOver"
+              PreviewDragLeave="PromptBar_PreviewDragLeave" PreviewDrop="PromptBar_PreviewDrop">
             <!-- Soft shadow drawn behind the bar (kept separate so the text stays sharp) -->
             <Border CornerRadius="18" Background="{DynamicResource CardBackground}" Margin="2">
                 <Border.Effect>
@@ -28,9 +31,37 @@
                                       Color="{StaticResource ShadowColor}"/>
                 </Border.Effect>
             </Border>
-            <Border CornerRadius="18" Background="{DynamicResource CardBackground}"
+            <Border x:Name="PromptBarBorder" CornerRadius="18" Background="{DynamicResource CardBackground}"
                     BorderBrush="{DynamicResource CardBorder}" BorderThickness="1" Padding="10,8">
                 <DockPanel>
+                    <!-- Attached files, shown as chips above the text -->
+                    <ItemsControl x:Name="AttachmentList" DockPanel.Dock="Top" Margin="2,0,0,6" Visibility="Collapsed">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="{DynamicResource AccentSoft}" CornerRadius="9" Padding="10,4,4,4"
+                                        Margin="0,0,6,4">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE8A5;" FontFamily="{StaticResource IconFont}" FontSize="12"
+                                                   Foreground="{DynamicResource AccentText}" VerticalAlignment="Center"
+                                                   Margin="0,0,7,0"/>
+                                        <TextBlock Text="{Binding Name}" FontSize="12.5" MaxWidth="220"
+                                                   TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                                                   Foreground="{DynamicResource TextPrimary}"/>
+                                        <TextBlock Text="{Binding SizeText}" FontSize="11" Margin="6,0,2,0"
+                                                   Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
+                                        <Button Style="{StaticResource IconButton}" Content="&#xE711;" Width="22" Height="22"
+                                                FontSize="9" ToolTip="Remove" Tag="{Binding}" Click="RemoveAttachment_Click"/>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
                     <Button x:Name="SendButton" DockPanel.Dock="Right" Width="40" Height="40"
                             ToolTip="Send to all (Enter)" Cursor="Hand" Click="Send_Click" VerticalAlignment="Bottom">
                         <Button.Template>
@@ -51,13 +82,23 @@
                             </ControlTemplate>
                         </Button.Template>
                     </Button>
-                    <Grid Margin="10,0,12,0">
+                    <!-- Shrinks the box back to one line (shown only when it has grown) -->
+                    <Button x:Name="ShrinkButton" DockPanel.Dock="Right" Style="{StaticResource IconButton}"
+                            Content="&#xE73F;" Width="34" Height="34" Margin="0,0,6,3" VerticalAlignment="Bottom"
+                            ToolTip="Shrink the chat box back to normal size (removes blank lines)"
+                            Click="Shrink_Click" Visibility="Collapsed"/>
+                    <Button DockPanel.Dock="Left" Style="{StaticResource IconButton}" Content="&#xE723;"
+                            Width="36" Height="40" FontSize="15" VerticalAlignment="Bottom"
+                            ToolTip="Attach files or images (or drop them here)" Click="Attach_Click"/>
+                    <Grid Margin="6,0,12,0">
                         <TextBox x:Name="PromptBox" BorderThickness="0" Background="Transparent" Padding="0"
                                  FontSize="15" VerticalContentAlignment="Center" MinHeight="40" MaxHeight="180"
                                  TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto"
-                                 PreviewKeyDown="PromptBox_PreviewKeyDown" TextChanged="PromptBox_TextChanged"/>
+                                 PreviewKeyDown="PromptBox_PreviewKeyDown" TextChanged="PromptBox_TextChanged"
+                                 SizeChanged="PromptBox_SizeChanged"/>
                         <TextBlock x:Name="Placeholder" IsHitTestVisible="False" Margin="2,0,0,0"
-                                   Text="Ask all your AIs at once…   Enter to send · Shift+Enter for a new line"
+                                   Text="Ask all your AIs at once…   Enter to send · Shift+Enter for a new line · drop files here"
+                                   TextTrimming="CharacterEllipsis"
                                    FontSize="15" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
                     </Grid>
                 </DockPanel>

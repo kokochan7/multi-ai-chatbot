@@ -238,6 +238,25 @@
                 </Setter>
             </Style>
 
+            <!-- Same small text button, but neutral (accent on hover), e.g. "Reset view" -->
+            <Style x:Key="QuietLinkButton" TargetType="Button" BasedOn="{StaticResource LinkButton}">
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Bg" Background="Transparent" CornerRadius="6" Padding="6,2">
+                                <ContentPresenter VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Foreground" Value="{DynamicResource AccentText}"/>
+                                    <Setter TargetName="Bg" Property="Background" Value="{DynamicResource NavHover}"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
             <!-- Text boxes: rounded, accent border when focused -->
             <Style TargetType="TextBox">
                 <Setter Property="FontFamily" Value="{StaticResource UiFont}"/>

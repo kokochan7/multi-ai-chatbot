@@ -1,0 +1,55 @@
+<UserControl x:Class="MultiAIChatbot.Views.ChatView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="clr-namespace:MultiAIChatbot.Controls">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Three AI columns side by side -->
+        <Grid Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="12"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="12"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <c:AiPane Grid.Column="0" Title="ChatGPT" Badge="G" Accent="#10A37F"
+                      HomeUrl="https://chatgpt.com/"/>
+            <c:AiPane Grid.Column="2" Title="Claude" Badge="C" Accent="#D97757"
+                      HomeUrl="https://claude.ai/new"/>
+            <c:AiPane Grid.Column="4" Title="Gemini" Badge="G" Accent="#4285F4"
+                      HomeUrl="https://gemini.google.com/app"/>
+        </Grid>
+
+        <!-- Shared prompt box (sending to all three arrives in Step 2) -->
+        <Border Grid.Row="1" Style="{StaticResource Card}" Margin="0,12,0,0" Padding="16,10">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Width="38" Height="38" IsEnabled="False"
+                        ToolTip="Send to all three (coming in the next update)" Cursor="Hand">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Bg" Background="{StaticResource Accent}" CornerRadius="19">
+                                <TextBlock Text="&#xE74A;" FontFamily="Segoe MDL2 Assets" FontSize="16"
+                                           Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter TargetName="Bg" Property="Opacity" Value="0.4"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+                <TextBox x:Name="PromptBox" BorderThickness="0" FontFamily="{StaticResource UiFont}" FontSize="15"
+                         VerticalContentAlignment="Center" Margin="0,0,12,0" MinHeight="38"
+                         TextWrapping="Wrap" AcceptsReturn="False" IsEnabled="False"
+                         ToolTip="Log in to each site above first. One-prompt sending arrives in the next update."/>
+            </DockPanel>
+        </Border>
+    </Grid>
+</UserControl>

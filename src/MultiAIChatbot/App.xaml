@@ -1,0 +1,83 @@
+<Application x:Class="MultiAIChatbot.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             StartupUri="MainWindow.xaml">
+    <Application.Resources>
+        <ResourceDictionary>
+            <!-- Colors (matched to the example screenshot) -->
+            <SolidColorBrush x:Key="AppBackground" Color="#74B9D6"/>
+            <SolidColorBrush x:Key="CardBackground" Color="#FFFFFF"/>
+            <SolidColorBrush x:Key="CardBorder" Color="#E3E8EC"/>
+            <SolidColorBrush x:Key="TextPrimary" Color="#1F2328"/>
+            <SolidColorBrush x:Key="TextMuted" Color="#6B7280"/>
+            <SolidColorBrush x:Key="Accent" Color="#1E88E5"/>
+            <SolidColorBrush x:Key="NavHover" Color="#EEF4F8"/>
+            <SolidColorBrush x:Key="NavSelected" Color="#DCEBF5"/>
+
+            <FontFamily x:Key="UiFont">Segoe UI</FontFamily>
+
+            <!-- White rounded card used for every panel -->
+            <Style x:Key="Card" TargetType="Border">
+                <Setter Property="Background" Value="{StaticResource CardBackground}"/>
+                <Setter Property="CornerRadius" Value="10"/>
+                <Setter Property="BorderBrush" Value="{StaticResource CardBorder}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+            </Style>
+
+            <!-- Left menu buttons -->
+            <Style x:Key="NavButton" TargetType="RadioButton">
+                <Setter Property="FontFamily" Value="{StaticResource UiFont}"/>
+                <Setter Property="FontSize" Value="14"/>
+                <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+                <Setter Property="Margin" Value="0,2"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="RadioButton">
+                            <Border x:Name="Bg" Background="Transparent" CornerRadius="8" Padding="12,9">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{TemplateBinding Tag}" FontFamily="Segoe MDL2 Assets"
+                                               FontSize="15" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                    <ContentPresenter VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bg" Property="Background" Value="{StaticResource NavHover}"/>
+                                </Trigger>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter TargetName="Bg" Property="Background" Value="{StaticResource NavSelected}"/>
+                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- Small icon buttons in column headers -->
+            <Style x:Key="IconButton" TargetType="Button">
+                <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
+                <Setter Property="FontSize" Value="13"/>
+                <Setter Property="Foreground" Value="{StaticResource TextMuted}"/>
+                <Setter Property="Width" Value="30"/>
+                <Setter Property="Height" Value="30"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Bg" Background="Transparent" CornerRadius="6">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bg" Property="Background" Value="{StaticResource NavHover}"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

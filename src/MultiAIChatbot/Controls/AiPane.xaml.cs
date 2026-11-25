@@ -24,12 +24,17 @@ public partial class AiPane : UserControl
         DependencyProperty.Register(nameof(Accent), typeof(Brush), typeof(AiPane),
             new PropertyMetadata(Brushes.Gray, (d, e) => ((AiPane)d).BadgeBorder.Background = (Brush)e.NewValue));
 
+    public static readonly DependencyProperty SiteKeyProperty =
+        DependencyProperty.Register(nameof(SiteKey), typeof(string), typeof(AiPane), new PropertyMetadata(""));
+
     public static readonly DependencyProperty HomeUrlProperty =
         DependencyProperty.Register(nameof(HomeUrl), typeof(string), typeof(AiPane), new PropertyMetadata(""));
 
     public string Title { get => (string)GetValue(TitleProperty); set => SetValue(TitleProperty, value); }
     public string Badge { get => (string)GetValue(BadgeProperty); set => SetValue(BadgeProperty, value); }
     public Brush Accent { get => (Brush)GetValue(AccentProperty); set => SetValue(AccentProperty, value); }
+    /// <summary>Which site this column shows: "chatgpt", "claude" or "gemini".</summary>
+    public string SiteKey { get => (string)GetValue(SiteKeyProperty); set => SetValue(SiteKeyProperty, value); }
     public string HomeUrl { get => (string)GetValue(HomeUrlProperty); set => SetValue(HomeUrlProperty, value); }
 
     private bool _initStarted;
@@ -82,6 +87,55 @@ public partial class AiPane : UserControl
     {
         if (Browser.CoreWebView2 != null && Uri.TryCreate(HomeUrl, UriKind.Absolute, out var uri))
             Browser.CoreWebView2.Navigate(uri.ToString());
+    }
+
+    /// <summary>Types the prompt into this site and presses Send.</summary>
+    public async Task SendPromptAsync(string prompt)
+    {
+        var site = AiSites.ByKey(SiteKey);
+        if (Browser.CoreWebView2 == null || site == null)
+        {
+            ShowStatus("Not ready", isError: true);
+            return;
+        }
+
+        ShowStatus("Sending…", isError: false);
+        var result = await PromptSender.SendAsync(Browser.CoreWebView2, site, prompt);
+        switch (result)
+        {
+            case SendResult.Sent:
+                ShowStatus("Sent", isError: false);
+                break;
+            case SendResult.NoChatBox:
+                ShowStatus("Chat box not found. Are you logged in?", isError: true);
+                break;
+            case SendResult.SendButtonNotFound:
+                ShowStatus("Pressed Enter (Send button not found)", isError: true);
+                break;
+            default:
+                ShowStatus("Couldn't send", isError: true);
+                break;
+        }
+    }
+
+    private CancellationTokenSource? _statusClear;
+
+    private async void ShowStatus(string text, bool isError)
+    {
+        SendStatus.Text = text;
+        SendStatus.Foreground = isError
+            ? new SolidColorBrush(Color.FromRgb(0xC6, 0x28, 0x28))
+            : (Brush)FindResource("TextMuted");
+
+        _statusClear?.Cancel();
+        if (text.EndsWith("…")) return;          // keep "Sending…" until the result arrives
+        var cts = _statusClear = new CancellationTokenSource();
+        try
+        {
+            await Task.Delay(isError ? 8000 : 3000, cts.Token);
+            SendStatus.Text = "";
+        }
+        catch (TaskCanceledException) { }
     }
 
     private void Back_Click(object sender, RoutedEventArgs e)

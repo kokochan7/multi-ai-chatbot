@@ -5,7 +5,7 @@ using Microsoft.Web.WebView2.Core;
 
 namespace MultiAIChatbot.Services;
 
-public enum SendResult { Sent, NoChatBox, SendButtonNotFound, Error }
+public enum SendResult { Sent, NoChatBox, SendButtonNotFound, FilesNeedSignIn, Error }
 
 /// <summary>
 /// Types a prompt into a site's chat box and presses Send, using small scripts run inside the page.
@@ -16,6 +16,8 @@ public static class PromptSender
     private static readonly string ClickScript = LoadScript("click-send.js");
     private static readonly string ReadScript = LoadScript("read-answer.js");
     private static readonly string AttachScript = LoadScript("attach-files.js");
+    private static readonly string AttachCheckScript = LoadScript("attach-check.js");
+    private static readonly string UploadFolder = Path.Combine(Path.GetTempPath(), "MultiAIChatbot", "Uploads");
 
     private static readonly JsonSerializerOptions CamelCase = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
@@ -29,8 +31,15 @@ public static class PromptSender
 
             if (hasFiles)
             {
-                var payload = JsonSerializer.Serialize(files!.Select(f => new { name = f.Name, type = f.MimeType, data = f.Base64 }));
-                await RunAsync(core, AttachScript.Replace("__CONFIG__", config).Replace("__FILES__", payload));
+                if (site.TrustedFileDrop)
+                {
+                    var outcome = await AttachWithRealDropAsync(core, site, config, files!);
+                    if (outcome == SendResult.FilesNeedSignIn) return outcome;
+                }
+                else
+                {
+                    await RunAsync(core, AttachScript.Replace("__CONFIG__", config).Replace("__FILES__", FilesJson(files!)));
+                }
                 // Give the site a moment to start the upload before typing.
                 await Task.Delay(800);
             }
@@ -63,6 +72,100 @@ public static class PromptSender
         {
             return SendResult.Error;
         }
+    }
+
+    private static string FilesJson(IReadOnlyList<Attachment> files) =>
+        JsonSerializer.Serialize(files.Select(f => new { name = f.Name, type = f.MimeType, data = f.Base64 }));
+
+    private sealed record AttachCheck(int X, int Y, int Attached, bool SignedOut);
+
+    private static async Task<AttachCheck> CheckAttachAsync(CoreWebView2 core, string config)
+    {
+        var json = await RunAsync(core, AttachCheckScript.Replace("__CONFIG__", config));
+        using var doc = JsonDocument.Parse(json);
+        var r = doc.RootElement;
+        return new AttachCheck(r.GetProperty("x").GetInt32(), r.GetProperty("y").GetInt32(),
+            r.GetProperty("attached").GetInt32(), r.GetProperty("signedOut").GetBoolean());
+    }
+
+    /// <summary>
+    /// Drops the files on the chat box the way a real mouse drop from File Explorer would,
+    /// using the browser's own DevTools input. Sites can't tell this from a person's drop,
+    /// unlike script-made paste events, which Gemini ignores.
+    /// Returns FilesNeedSignIn when nothing got attached and the site shows a "Sign in" button.
+    /// </summary>
+    private static async Task<SendResult> AttachWithRealDropAsync(CoreWebView2 core, SiteSelectors site, string config,
+        IReadOnlyList<Attachment> files)
+    {
+        var before = await CheckAttachAsync(core, config);
+        var dropped = false;
+        if (before.X >= 0)
+        {
+            try
+            {
+                var paths = WriteUploadFiles(files);
+                foreach (var type in new[] { "dragEnter", "dragOver", "drop" })
+                {
+                    var args = JsonSerializer.Serialize(new
+                    {
+                        type,
+                        x = before.X,
+                        y = before.Y,
+                        data = new { items = Array.Empty<object>(), files = paths, dragOperationsMask = 1 },
+                    });
+                    await core.CallDevToolsProtocolMethodAsync("Input.dispatchDragEvent", args);
+                    await Task.Delay(type == "drop" ? 0 : 150);   // let the page show its drop zone
+                }
+                dropped = true;
+            }
+            catch
+            {
+                // Older WebView2 runtimes may not support it; the script way below still runs.
+            }
+        }
+
+        // Wait for a preview of the file to show up in the chat box.
+        for (var i = 0; i < 25; i++)
+        {
+            await Task.Delay(200);
+            if ((await CheckAttachAsync(core, config)).Attached > before.Attached) return SendResult.Sent;
+        }
+
+        if (before.SignedOut) return SendResult.FilesNeedSignIn;
+
+        // Not sure it worked (the preview may look different): try the script way as well.
+        if (!dropped)
+            await RunAsync(core, AttachScript.Replace("__CONFIG__", config).Replace("__FILES__", FilesJson(files)));
+        return SendResult.Sent;
+    }
+
+    /// <summary>Writes the files to a temporary folder so the browser can read them like a real drop.</summary>
+    private static List<string> WriteUploadFiles(IReadOnlyList<Attachment> files)
+    {
+        // Remove folders from earlier sends; the sites have long finished reading them.
+        try
+        {
+            if (Directory.Exists(UploadFolder))
+                foreach (var old in Directory.GetDirectories(UploadFolder))
+                    if (Directory.GetCreationTimeUtc(old) < DateTime.UtcNow.AddHours(-1))
+                        Directory.Delete(old, recursive: true);
+        }
+        catch { /* leftovers are harmless */ }
+
+        var dir = Path.Combine(UploadFolder, Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        var paths = new List<string>();
+        foreach (var file in files)
+        {
+            var name = file.Name;
+            foreach (var c in Path.GetInvalidFileNameChars()) name = name.Replace(c, '_');
+            var path = Path.Combine(dir, name);
+            for (var n = 2; File.Exists(path); n++)
+                path = Path.Combine(dir, $"{Path.GetFileNameWithoutExtension(name)} ({n}){Path.GetExtension(name)}");
+            File.WriteAllBytes(path, Convert.FromBase64String(file.Base64));
+            paths.Add(path);
+        }
+        return paths;
     }
 
     /// <summary>How many answers are on the page right now (call before sending).</summary>

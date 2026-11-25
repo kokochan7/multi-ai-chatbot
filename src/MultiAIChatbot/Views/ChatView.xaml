@@ -43,10 +43,21 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Background="{DynamicResource AccentSoft}" CornerRadius="9" Padding="10,4,4,4"
-                                        Margin="0,0,6,4">
+                                <Border x:Name="Chip" Background="{DynamicResource AccentSoft}" CornerRadius="9"
+                                        Padding="10,4,4,4" Margin="0,0,6,4">
                                     <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="&#xE8A5;" FontFamily="{StaticResource IconFont}" FontSize="12"
+                                        <!-- Pictures show a small preview (hover for a bigger one) -->
+                                        <Border x:Name="Thumb" Width="44" Height="44" CornerRadius="6" Margin="0,0,9,0"
+                                                Visibility="Collapsed" ToolTipService.InitialShowDelay="250">
+                                            <Border.Background>
+                                                <ImageBrush ImageSource="{Binding Thumbnail}" Stretch="UniformToFill"/>
+                                            </Border.Background>
+                                            <Border.ToolTip>
+                                                <Image Source="{Binding Preview}" MaxWidth="360" MaxHeight="360"
+                                                       RenderOptions.BitmapScalingMode="HighQuality"/>
+                                            </Border.ToolTip>
+                                        </Border>
+                                        <TextBlock x:Name="FileIcon" Text="&#xE8A5;" FontFamily="{StaticResource IconFont}" FontSize="12"
                                                    Foreground="{DynamicResource AccentText}" VerticalAlignment="Center"
                                                    Margin="0,0,7,0"/>
                                         <TextBlock Text="{Binding Name}" FontSize="12.5" MaxWidth="220"
@@ -55,9 +66,17 @@
                                         <TextBlock Text="{Binding SizeText}" FontSize="11" Margin="6,0,2,0"
                                                    Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
                                         <Button Style="{StaticResource IconButton}" Content="&#xE711;" Width="22" Height="22"
-                                                FontSize="9" ToolTip="Remove" Tag="{Binding}" Click="RemoveAttachment_Click"/>
+                                                FontSize="9" ToolTip="Remove" Tag="{Binding}" Click="RemoveAttachment_Click"
+                                                VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </Border>
+                                <DataTemplate.Triggers>
+                                    <DataTrigger Binding="{Binding HasThumbnail}" Value="True">
+                                        <Setter TargetName="Thumb" Property="Visibility" Value="Visible"/>
+                                        <Setter TargetName="FileIcon" Property="Visibility" Value="Collapsed"/>
+                                        <Setter TargetName="Chip" Property="Padding" Value="4,4,4,4"/>
+                                    </DataTrigger>
+                                </DataTemplate.Triggers>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>

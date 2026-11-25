@@ -13,10 +13,11 @@
   const index = __INDEX__;
   const last = index >= 0 ? nodes[index] : nodes[nodes.length - 1];
   const streaming = !!document.querySelector(
-    "[data-is-streaming='true'], button[data-testid='stop-button'], button[aria-label='Stop streaming'], button[aria-label='Stop response'], button[aria-label='Stop generating']");
+    "[data-is-streaming='true'], button[data-testid='stop-button'], button[aria-label='Stop streaming'], button[aria-label='Stop response'], button[aria-label='Stop generating'], " +
+    "li[data-message-role='assistant']:not([data-message-complete]), [data-assistant-markdown-root] [aria-busy='true']");
 
   // The answer's own text lives in "markdown" blocks; tool steps and chips sit next to them.
-  const CONTENT = ".standard-markdown, .progressive-markdown, .markdown, .prose, [class*='markdown']";
+  const CONTENT = "[data-assistant-markdown-root], .standard-markdown, .progressive-markdown, .markdown, .prose, [class*='markdown']";
   const SKIP = "button, svg, style, script, noscript, img, picture, video, canvas, input, textarea, select, " +
     "[aria-hidden='true'], .sr-only, [role='button'], [role='status'], [role='tooltip'], [role='toolbar'], " +
     "[data-testid*='citation'], [class*='citation'], source-footnote, sources-carousel, .katex-mathml";
@@ -114,7 +115,7 @@
     blocks = blocks.filter(b => !blocks.some(o => o !== b && o.contains(b)));   // outermost only
     const parts = (blocks.length ? blocks : [root]).map(b => convert(b, false, 0));
     return parts.join('\n\n')
-      .replace(/[-□�]/g, '')          // icon-font glyphs (□)
+      .replace(/[\uE000-\uF8FF\u25A1\uFFFD]/g, '')          // icon-font glyphs (□)
       .replace(/[ \t]+\n/g, '\n')
       .replace(/\n{3,}/g, '\n\n')
       .trim();

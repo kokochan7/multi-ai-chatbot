@@ -76,6 +76,9 @@
                                 <StackPanel Margin="0,0,8,22">
                                     <DockPanel Margin="0,0,0,10">
                                         <Button DockPanel.Dock="Right" Style="{StaticResource QuietLinkButton}" FontSize="12"
+                                                Content="Compare" Click="Compare_Click" VerticalAlignment="Top"
+                                                Margin="14,0,0,0" ToolTip="See which items the AIs agree on for this question"/>
+                                        <Button DockPanel.Dock="Right" Style="{StaticResource QuietLinkButton}" FontSize="12"
                                                 Content="Refresh" Click="Refresh_Click" VerticalAlignment="Top"
                                                 ToolTip="Read the answers again from the AI sites, for example one that was still being written"/>
                                         <TextBlock Text="&#xE8F2;" FontFamily="{StaticResource IconFont}" FontSize="13"

@@ -32,6 +32,13 @@ public partial class MainWindow : Window
         };
 
         HistoryPage.RefreshRequested = ChatPage.RefreshAnswersAsync;
+        HistoryPage.CompareRequested += entry =>
+        {
+            ComparePage.Show(entry);
+            _comparePicked = true;
+            if (NavCompare.IsChecked == true) _comparePicked = false;
+            else NavCompare.IsChecked = true;
+        };
 
         SettingsPage.ShowChatRequested += () => NavChat.IsChecked = true;
 
@@ -82,14 +89,20 @@ public partial class MainWindow : Window
         if (answer == MessageBoxResult.Yes) AppState.ClearHistory();
     }
 
+    private bool _comparePicked;
+
     private void Nav_Checked(object sender, RoutedEventArgs e)
     {
         // Checked can fire while the window is still being built.
-        if (ChatPage is null || HistoryPage is null || SettingsPage is null) return;
+        if (ChatPage is null || HistoryPage is null || SettingsPage is null || ComparePage is null) return;
 
         ChatPage.Visibility = sender == NavChat ? Visibility.Visible : Visibility.Collapsed;
         HistoryPage.Visibility = sender == NavHistory ? Visibility.Visible : Visibility.Collapsed;
         SettingsPage.Visibility = sender == NavSettings ? Visibility.Visible : Visibility.Collapsed;
+        ComparePage.Visibility = sender == NavCompare ? Visibility.Visible : Visibility.Collapsed;
+        // From the menu, Compare shows the latest question; History's Compare link picks one itself.
+        if (sender == NavCompare && !_comparePicked) ComparePage.ShowLatest();
+        _comparePicked = false;
         if (RecentList is null) return;
         if (sender != NavHistory)
         {

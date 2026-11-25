@@ -28,6 +28,10 @@ Drag a column by its header bar to move it, and drag the gaps between columns (o
 
 If a site changes its page and sending stops working there, the fix is usually a one-line update to `src/MultiAIChatbot/Services/AiSites.cs`.
 
+## Compare
+
+**Compare** in the left menu shows what the AIs agree on for your latest question. Ask something like "best face cleanser for dry skin", and it lists the items all three recommended first, then the ones two of them recommended, each with what every AI said about it. Items only one AI mentioned are one click away. To compare an older question, use **Compare** next to it in History. The matching runs on your PC using the saved answers, so it needs **Save each AI's answer** turned on.
+
 ## History and Settings
 
 - **History** saves every question, plus each AI's answer once it finishes, on your PC. Pick a chat under **Recent** in the left menu (with search) to see each of its questions with the answers side by side (shown as formatted text with headings, lists, links and code), copy an answer, or delete the chat. **Refresh** next to a question reads its answers again from the AI sites (handy when one was still being written); it works for the current chat, until you press New Chat.

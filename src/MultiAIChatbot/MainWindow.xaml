@@ -72,6 +72,9 @@
                                  Tag="&#xE8F2;" Content="Chat" IsChecked="True" Checked="Nav_Checked"/>
                     <RadioButton x:Name="NavHistory" GroupName="Nav" Style="{StaticResource NavButton}"
                                  Tag="&#xE81C;" Content="History" Checked="Nav_Checked"/>
+                    <RadioButton x:Name="NavCompare" GroupName="Nav" Style="{StaticResource NavButton}"
+                                 Tag="&#xE9D5;" Content="Compare" Checked="Nav_Checked"
+                                 ToolTip="See which items all the AIs agree on for your latest question"/>
                     <DockPanel Margin="12,22,4,8">
                         <Button DockPanel.Dock="Right" x:Name="ClearAllButton" Content="Clear all"
                                 Style="{StaticResource LinkButton}" Click="ClearAll_Click"
@@ -121,6 +124,7 @@
         <Grid Grid.Column="2" Margin="2,6,6,6">
             <v:ChatView x:Name="ChatPage"/>
             <v:HistoryView x:Name="HistoryPage" Visibility="Collapsed"/>
+            <v:CompareView x:Name="ComparePage" Visibility="Collapsed"/>
             <v:SettingsView x:Name="SettingsPage" Visibility="Collapsed"/>
         </Grid>
     </Grid>

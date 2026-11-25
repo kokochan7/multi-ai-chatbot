@@ -214,6 +214,30 @@
                 </Setter>
             </Style>
 
+            <!-- Small text-only button, e.g. "Clear all" next to a section label -->
+            <Style x:Key="LinkButton" TargetType="Button">
+                <Setter Property="FontFamily" Value="{StaticResource UiFont}"/>
+                <Setter Property="FontSize" Value="11.5"/>
+                <Setter Property="Foreground" Value="{DynamicResource TextMuted}"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Bg" Background="Transparent" CornerRadius="6" Padding="6,2">
+                                <ContentPresenter VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Foreground" Value="{DynamicResource ErrorText}"/>
+                                    <Setter TargetName="Bg" Property="Background" Value="{DynamicResource DangerHover}"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
             <!-- Text boxes: rounded, accent border when focused -->
             <Style TargetType="TextBox">
                 <Setter Property="FontFamily" Value="{StaticResource UiFont}"/>

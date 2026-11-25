@@ -1,5 +1,7 @@
 using System.Windows;
+using System.ComponentModel;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using MultiAIChatbot.Services;
@@ -8,6 +10,8 @@ namespace MultiAIChatbot;
 
 public partial class MainWindow : Window
 {
+    private readonly ICollectionView? _recentView;
+
     public MainWindow()
     {
         InitializeComponent();
@@ -15,9 +19,17 @@ public partial class MainWindow : Window
         SourceInitialized += (_, _) => Theme.ApplyTitleBar(this);
         SidebarColumn.Width = new GridLength(AppState.Settings.SidebarWidth);
 
-        RecentList.ItemsSource = AppState.History;
+        _recentView = CollectionViewSource.GetDefaultView(AppState.History);
+        _recentView.Filter = MatchesSearch;
+        RecentList.ItemsSource = _recentView;
         AppState.History.CollectionChanged += (_, _) => UpdateRecentEmpty();
         UpdateRecentEmpty();
+
+        // Keep the Recent highlight on whatever the History page is showing.
+        HistoryPage.CurrentChanged += entry =>
+        {
+            if (NavHistory.IsChecked == true) RecentList.SelectedItem = entry;
+        };
 
         HistoryPage.AskAgainRequested += prompt =>
         {
@@ -34,7 +46,37 @@ public partial class MainWindow : Window
 
     private void UpdateRecentEmpty()
     {
-        RecentEmpty.Visibility = AppState.History.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        var hasHistory = AppState.History.Count > 0;
+        var searching = SearchBox.Text.Trim().Length > 0;
+        var anyShown = _recentView is { IsEmpty: false };
+        RecentEmpty.Text = hasHistory ? "No matches." : "Your questions will show up here.";
+        RecentEmpty.Visibility = anyShown ? Visibility.Collapsed : Visibility.Visible;
+        SearchPanel.Visibility = hasHistory || searching ? Visibility.Visible : Visibility.Collapsed;
+        ClearAllButton.Visibility = hasHistory ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private bool MatchesSearch(object item)
+    {
+        var q = SearchBox.Text.Trim();
+        if (q.Length == 0 || item is not HistoryEntry e) return true;
+        return new[] { e.Prompt, e.ChatGpt, e.Claude, e.Gemini }
+            .Any(t => t.Contains(q, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (_recentView is null) return;   // fires while the window is being built
+        SearchPlaceholder.Visibility = SearchBox.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+        _recentView.Refresh();
+        UpdateRecentEmpty();
+    }
+
+    private void ClearAll_Click(object sender, RoutedEventArgs e)
+    {
+        if (AppState.History.Count == 0) return;
+        var answer = MessageBox.Show(this, "Delete all saved questions and answers?",
+            "Clear history", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+        if (answer == MessageBoxResult.Yes) AppState.ClearHistory();
     }
 
     private void Nav_Checked(object sender, RoutedEventArgs e)
@@ -45,7 +87,17 @@ public partial class MainWindow : Window
         ChatPage.Visibility = sender == NavChat ? Visibility.Visible : Visibility.Collapsed;
         HistoryPage.Visibility = sender == NavHistory ? Visibility.Visible : Visibility.Collapsed;
         SettingsPage.Visibility = sender == NavSettings ? Visibility.Visible : Visibility.Collapsed;
-        if (sender != NavHistory && RecentList is not null) RecentList.SelectedItem = null;
+        if (RecentList is null) return;
+        if (sender != NavHistory)
+        {
+            RecentList.SelectedItem = null;
+        }
+        else
+        {
+            // Opening History shows the newest question if nothing is picked yet.
+            if (HistoryPage.Current is null && AppState.History.Count > 0) HistoryPage.Show(AppState.History[0]);
+            RecentList.SelectedItem = HistoryPage.Current;
+        }
     }
 
     /// <summary>Opens the clicked recent question on the History page.</summary>
@@ -63,9 +115,9 @@ public partial class MainWindow : Window
 
     private void OpenInHistory(HistoryEntry entry)
     {
+        HistoryPage.Show(entry);
         NavHistory.IsChecked = true;
         RecentList.SelectedItem = entry;
-        HistoryPage.Show(entry);
     }
 
     private void SidebarSplitter_DragCompleted(object sender, DragCompletedEventArgs e)

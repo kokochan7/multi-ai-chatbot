@@ -46,7 +46,22 @@
                                  Tag="&#xE8F2;" Content="Chat" IsChecked="True" Checked="Nav_Checked"/>
                     <RadioButton x:Name="NavHistory" GroupName="Nav" Style="{StaticResource NavButton}"
                                  Tag="&#xE81C;" Content="History" Checked="Nav_Checked"/>
-                    <TextBlock Text="RECENT" Style="{StaticResource SectionLabel}" Margin="12,22,0,6"/>
+                    <DockPanel Margin="12,22,4,8">
+                        <Button DockPanel.Dock="Right" x:Name="ClearAllButton" Content="Clear all"
+                                Style="{StaticResource LinkButton}" Click="ClearAll_Click"
+                                ToolTip="Delete all saved questions and answers"/>
+                        <TextBlock Text="RECENT" Style="{StaticResource SectionLabel}" VerticalAlignment="Center"/>
+                    </DockPanel>
+                    <!-- Search past questions and answers -->
+                    <Grid x:Name="SearchPanel" Margin="0,0,0,8">
+                        <TextBox x:Name="SearchBox" Padding="30,6,8,6" FontSize="12.5" TextChanged="SearchBox_TextChanged"/>
+                        <TextBlock Text="&#xE721;" FontFamily="{StaticResource IconFont}" FontSize="12"
+                                   Foreground="{DynamicResource TextMuted}" IsHitTestVisible="False"
+                                   VerticalAlignment="Center" Margin="11,0,0,0"/>
+                        <TextBlock x:Name="SearchPlaceholder" Text="Search" FontSize="12.5"
+                                   Foreground="{DynamicResource TextMuted}" IsHitTestVisible="False"
+                                   VerticalAlignment="Center" Margin="31,0,0,0"/>
+                    </Grid>
                 </StackPanel>
 
                 <!-- Recent questions. Clicking one opens it in History with all its answers. -->
@@ -55,18 +70,13 @@
                              PreviewMouseLeftButtonUp="RecentList_Click" KeyDown="RecentList_KeyDown">
                         <ListBox.ItemContainerStyle>
                             <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
-                                <Setter Property="Padding" Value="12,6"/>
-                                <Setter Property="ToolTip" Value="{Binding Prompt}"/>
+                                <Setter Property="Padding" Value="12,8"/>
                             </Style>
                         </ListBox.ItemContainerStyle>
                         <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <StackPanel>
-                                    <TextBlock Text="{Binding Prompt}" FontSize="13" TextTrimming="CharacterEllipsis"
-                                               Foreground="{DynamicResource TextPrimary}"/>
-                                    <TextBlock Text="{Binding TimeText}" FontSize="10.5" Margin="0,1,0,0"
-                                               Foreground="{DynamicResource TextMuted}"/>
-                                </StackPanel>
+                                <TextBlock Text="{Binding Prompt}" FontSize="13" TextTrimming="CharacterEllipsis"
+                                           Foreground="{DynamicResource TextPrimary}"/>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>

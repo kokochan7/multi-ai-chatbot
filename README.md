@@ -24,13 +24,13 @@ Log in to ChatGPT, Claude and Gemini once, inside their columns. Your logins are
 
 Type in the box at the bottom and press **Enter** (Shift+Enter adds a new line). The app types your question into ChatGPT, Claude and Gemini and presses Send on each. Each column shows a short status ("Sent", or what went wrong). The **+** button starts a new chat on all three sites.
 
-Drag a column by its header bar to move it, and drag the gaps between columns (or the edge of the left menu) to resize them. The app remembers the order and sizes. Your most recent questions are listed in the left menu; click one to see all its answers.
+Drag a column by its header bar to move it, and drag the gaps between columns (or the edge of the left menu) to resize them. The app remembers the order and sizes. Your past questions are listed under Recent in the left menu, with a search box and Clear all; click one to see all its answers on the History page.
 
 If a site changes its page and sending stops working there, the fix is usually a one-line update to `src/MultiAIChatbot/Services/AiSites.cs`.
 
 ## History and Settings
 
-- **History** saves every question, plus each AI's answer once it finishes, on your PC. You can search, copy an answer, delete one entry, or use **Ask again**.
+- **History** saves every question, plus each AI's answer once it finishes, on your PC. Pick one under **Recent** in the left menu (with search) to see its answers side by side, copy an answer, delete it, or use **Ask again**.
 - **Settings** lets you pick a light or dark theme (or follow Windows), show or hide each AI, change the column order, turn answer saving on or off, clear history, log out of all sites, and update the app.
 
 Everything is stored in `%LOCALAPPDATA%\MultiAIChatbot` and never leaves your PC.

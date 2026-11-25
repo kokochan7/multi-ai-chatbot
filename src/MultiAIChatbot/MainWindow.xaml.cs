@@ -120,6 +120,12 @@ public partial class MainWindow : Window
         RecentList.SelectedItem = entry;
     }
 
+    private void NewChat_Click(object sender, RoutedEventArgs e)
+    {
+        NavChat.IsChecked = true;
+        ChatPage.StartNewChat();
+    }
+
     private void SidebarSplitter_DragCompleted(object sender, DragCompletedEventArgs e)
     {
         AppState.Settings.SidebarWidth = Math.Round(SidebarColumn.ActualWidth);

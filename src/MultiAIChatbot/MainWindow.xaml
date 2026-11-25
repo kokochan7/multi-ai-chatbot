@@ -40,6 +40,17 @@
                                Margin="12,10,0,0"/>
                 </StackPanel>
 
+                <!-- Start a fresh chat on every AI site -->
+                <Button DockPanel.Dock="Top" x:Name="NewChatButton" Style="{StaticResource PrimaryButton}"
+                        HorizontalAlignment="Stretch" Padding="12,9" Margin="4,0,4,20"
+                        ToolTip="Start a new chat on all AI sites" Click="NewChat_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE710;" FontFamily="{StaticResource IconFont}" FontSize="13"
+                                   VerticalAlignment="Center" Margin="0,0,10,0"/>
+                        <TextBlock Text="New Chat" FontSize="14" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
                 <StackPanel DockPanel.Dock="Top">
                     <TextBlock Text="MENU" Style="{StaticResource SectionLabel}" Margin="12,0,0,8"/>
                     <RadioButton x:Name="NavChat" GroupName="Nav" Style="{StaticResource NavButton}"
@@ -54,13 +65,13 @@
                     </DockPanel>
                     <!-- Search past questions and answers -->
                     <Grid x:Name="SearchPanel" Margin="0,0,0,8">
-                        <TextBox x:Name="SearchBox" Padding="30,6,8,6" FontSize="12.5" TextChanged="SearchBox_TextChanged"/>
+                        <TextBox x:Name="SearchBox" Padding="8,6,28,6" FontSize="12.5" TextChanged="SearchBox_TextChanged"/>
                         <TextBlock Text="&#xE721;" FontFamily="{StaticResource IconFont}" FontSize="12"
                                    Foreground="{DynamicResource TextMuted}" IsHitTestVisible="False"
-                                   VerticalAlignment="Center" Margin="11,0,0,0"/>
+                                   VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,11,0"/>
                         <TextBlock x:Name="SearchPlaceholder" Text="Search" FontSize="12.5"
                                    Foreground="{DynamicResource TextMuted}" IsHitTestVisible="False"
-                                   VerticalAlignment="Center" Margin="31,0,0,0"/>
+                                   VerticalAlignment="Center" Margin="11,0,0,0"/>
                     </Grid>
                 </StackPanel>
 

@@ -41,6 +41,14 @@ public sealed class HistoryEntry : INotifyPropertyChanged
     [JsonIgnore]
     public string TimeText => Time.ToString("MMM d, h:mm tt");
 
+    public string AnswerFor(string siteKey) => siteKey switch
+    {
+        "chatgpt" => ChatGpt,
+        "claude" => Claude,
+        "gemini" => Gemini,
+        _ => "",
+    };
+
     public void SetAnswer(string siteKey, string text)
     {
         switch (siteKey)

@@ -382,7 +382,31 @@ public partial class ChatView : UserControl
         }
     }
 
-    /// <summary>Puts text in the prompt box (used by History's "Ask again").</summary>
+    /// <summary>
+    /// Re-reads the answers to one saved question from the AI sites, without asking again.
+    /// Works for the chat that is still open on the sites (the one since the last New Chat).
+    /// Returns a short result for the History page's button.
+    /// </summary>
+    public async Task<string> RefreshAnswersAsync(Conversation chat, HistoryEntry entry)
+    {
+        if (!AppState.Settings.SaveAnswers) return "Saving answers is off";
+        if (chat.Id != _conversationId) return "Chat no longer open";
+        var index = chat.Entries.IndexOf(entry);
+        if (index < 0) return "Couldn't refresh";
+
+        var updated = 0;
+        foreach (var pane in AllPanes)
+        {
+            var text = await pane.ReadAnswerAsync(index, chat.Entries.Count);
+            if (text.Length == 0 || text == entry.AnswerFor(pane.SiteKey)) continue;
+            entry.SetAnswer(pane.SiteKey, text);
+            updated++;
+        }
+        if (updated > 0) AppState.SaveHistory();
+        return updated > 0 ? "Updated" : "Up to date";
+    }
+
+    /// <summary>Puts text in the prompt box.</summary>
     public void SetPrompt(string text)
     {
         PromptBox.Text = text;

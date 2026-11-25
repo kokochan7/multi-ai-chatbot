@@ -76,8 +76,8 @@
                                 <StackPanel Margin="0,0,8,22">
                                     <DockPanel Margin="0,0,0,10">
                                         <Button DockPanel.Dock="Right" Style="{StaticResource QuietLinkButton}" FontSize="12"
-                                                Content="Ask again" Click="AskAgain_Click" VerticalAlignment="Top"
-                                                ToolTip="Put this question back in the prompt box"/>
+                                                Content="Refresh" Click="Refresh_Click" VerticalAlignment="Top"
+                                                ToolTip="Read the answers again from the AI sites, for example one that was still being written"/>
                                         <TextBlock Text="&#xE8F2;" FontFamily="{StaticResource IconFont}" FontSize="13"
                                                    Foreground="{DynamicResource AccentText}" VerticalAlignment="Top"
                                                    Margin="0,3,10,0"/>

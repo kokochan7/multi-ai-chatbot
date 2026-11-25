@@ -17,6 +17,10 @@ public sealed class AppSettings
     public bool CheckForUpdatesOnStartup { get; set; } = true;
     /// <summary>"System" (follow Windows), "Light" or "Dark".</summary>
     public string Theme { get; set; } = "System";
+    /// <summary>Width of the left menu in pixels (drag its edge to change).</summary>
+    public double SidebarWidth { get; set; } = 232;
+    /// <summary>Relative width of each AI column, by site key (drag the gaps to change).</summary>
+    public Dictionary<string, double> ColumnWidths { get; set; } = new();
 }
 
 /// <summary>One question and the three answers to it.</summary>
@@ -93,6 +97,9 @@ public static class AppState
         SettingsChanged?.Invoke();
     }
 
+    /// <summary>Saves settings without telling the pages to rebuild (used for panel sizes).</summary>
+    public static void SaveSettingsQuietly() => Save(SettingsFile, Settings);
+
     public static HistoryEntry AddHistory(string prompt)
     {
         var entry = new HistoryEntry { Prompt = prompt };
@@ -127,6 +134,9 @@ public static class AppState
         order.AddRange(AiSites.AllKeys.Where(k => !order.Contains(k)));
         Settings.ColumnOrder = order;
         Settings.HiddenSites = Settings.HiddenSites.Where(AiSites.AllKeys.Contains).Distinct().ToList();
+        Settings.ColumnWidths ??= new();
+        if (double.IsNaN(Settings.SidebarWidth) || Settings.SidebarWidth < 160 || Settings.SidebarWidth > 600)
+            Settings.SidebarWidth = 232;
     }
 
     private static T? Load<T>(string path) where T : class

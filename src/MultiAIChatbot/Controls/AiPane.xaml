@@ -10,8 +10,12 @@
             </Grid.RowDefinitions>
 
             <!-- Column header: badge, name, status and browser buttons -->
-            <Border Grid.Row="0" BorderBrush="{DynamicResource Divider}" BorderThickness="0,0,0,1"
-                    Padding="14,10,10,10">
+            <!-- Click and hold here, then drag sideways, to move this column -->
+            <Border x:Name="HeaderBar" Grid.Row="0" BorderBrush="{DynamicResource Divider}" BorderThickness="0,0,0,1"
+                    Background="Transparent" CornerRadius="13,13,0,0" Padding="14,10,10,10" Cursor="SizeAll"
+                    ToolTip="Drag to move this column"
+                    MouseLeftButtonDown="Header_MouseLeftButtonDown" MouseMove="Header_MouseMove"
+                    MouseLeftButtonUp="Header_MouseLeftButtonUp" LostMouseCapture="Header_LostMouseCapture">
                 <DockPanel LastChildFill="True">
                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                         <Button x:Name="BackButton" Style="{StaticResource IconButton}" Content="&#xE72B;"

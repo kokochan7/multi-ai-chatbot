@@ -24,6 +24,8 @@ Log in to ChatGPT, Claude and Gemini once, inside their columns. Your logins are
 
 Type in the box at the bottom and press **Enter** (Shift+Enter adds a new line). The app types your question into ChatGPT, Claude and Gemini and presses Send on each. Each column shows a short status ("Sent", or what went wrong). The **+** button starts a new chat on all three sites.
 
+Drag a column by its header bar to move it, and drag the gaps between columns (or the edge of the left menu) to resize them. The app remembers the order and sizes. Your most recent questions are listed in the left menu; click one to see all its answers.
+
 If a site changes its page and sending stops working there, the fix is usually a one-line update to `src/MultiAIChatbot/Services/AiSites.cs`.
 
 ## History and Settings

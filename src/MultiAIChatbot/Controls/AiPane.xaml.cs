@@ -290,6 +290,9 @@ public partial class AiPane : UserControl
             case SendResult.NoChatBox:
                 ShowStatus("Chat box not found. Are you logged in?", isError: true);
                 break;
+            case SendResult.FilesNeedSignIn:
+                ShowStatus($"Not sent. Sign in to {AiSites.DisplayName(SiteKey)} to send files", isError: true);
+                break;
             case SendResult.SendButtonNotFound:
                 ShowStatus("Pressed Enter (Send button not found)", isError: true);
                 break;
@@ -298,7 +301,7 @@ public partial class AiPane : UserControl
                 break;
         }
 
-        if (result is SendResult.NoChatBox or SendResult.Error) return null;
+        if (result is SendResult.NoChatBox or SendResult.FilesNeedSignIn or SendResult.Error) return null;
         return captureAnswer
             ? PromptSender.WaitForAnswerAsync(core, site, countBefore)
             : Task.FromResult("");

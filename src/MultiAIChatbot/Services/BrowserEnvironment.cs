@@ -4,9 +4,9 @@ using Microsoft.Web.WebView2.Core;
 namespace MultiAIChatbot.Services;
 
 /// <summary>
-/// One shared WebView2 browser profile for the whole app. It lives in
-/// %LOCALAPPDATA%\MultiAIChatbot\BrowserData, so cookies (your logins to
-/// ChatGPT, Claude and Gemini) survive closing and reopening the app.
+/// The app's WebView2 browser. Its data lives in %LOCALAPPDATA%\MultiAIChatbot\BrowserData,
+/// so logins survive closing and reopening the app. Each site uses its own profile inside it
+/// (see <see cref="ProfileNameFor"/>), so their logins are kept apart.
 /// </summary>
 public static class BrowserEnvironment
 {
@@ -15,6 +15,10 @@ public static class BrowserEnvironment
         "MultiAIChatbot", "BrowserData");
 
     private static Task<CoreWebView2Environment>? _environment;
+
+    /// <summary>The browser profile for one site ("chatgpt" → "site-chatgpt").</summary>
+    public static string ProfileNameFor(string siteKey) =>
+        "site-" + new string(siteKey.ToLowerInvariant().Where(char.IsLetterOrDigit).ToArray());
 
     public static Task<CoreWebView2Environment> GetAsync()
     {

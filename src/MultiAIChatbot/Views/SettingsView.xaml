@@ -143,16 +143,49 @@
                 </StackPanel>
             </Border>
 
-            <!-- Logins -->
+            <!-- Accounts: each AI has its own separate login -->
             <Border Style="{StaticResource Section}">
                 <StackPanel>
                     <StackPanel Style="{StaticResource SectionHeader}">
-                        <TextBlock Text="&#xE72E;" Style="{StaticResource SectionIcon}"/>
-                        <TextBlock Text="Logins and privacy" Style="{StaticResource Heading}"/>
+                        <TextBlock Text="&#xE77B;" Style="{StaticResource SectionIcon}"/>
+                        <TextBlock Text="Accounts" Style="{StaticResource Heading}"/>
                     </StackPanel>
+                    <TextBlock Text="Each AI keeps its own login, so signing in to one (for example with Google) doesn't sign you in to the others."
+                               Style="{StaticResource Hint}"/>
+                    <ItemsControl x:Name="AccountList" Margin="28,0,0,6">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="{DynamicResource AppBackground}" BorderBrush="{DynamicResource Divider}"
+                                        BorderThickness="1" CornerRadius="10" Padding="14,9,9,9" Margin="0,0,0,8">
+                                    <DockPanel>
+                                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <Button Content="Sign in" Style="{StaticResource PrimaryButton}" Padding="14,6"
+                                                    Tag="{Binding Key}" Click="AccountSignIn_Click"
+                                                    Visibility="{Binding SignInVisibility}"
+                                                    ToolTip="Open this AI's sign-in page on the Chat page"/>
+                                            <Button Content="Disconnect" Style="{StaticResource DangerButton}" Padding="14,6"
+                                                    Margin="8,0,0,0" Tag="{Binding Key}" Click="AccountDisconnect_Click"
+                                                    Visibility="{Binding DisconnectVisibility}"
+                                                    ToolTip="Sign out of this AI only and clear its saved data"/>
+                                        </StackPanel>
+                                        <Ellipse Width="9" Height="9" Fill="{Binding Color}" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="SemiBold"/>
+                                            <TextBlock Text="{Binding Status}" FontSize="12" Foreground="{DynamicResource TextMuted}"
+                                                       Margin="0,1,0,0"/>
+                                        </StackPanel>
+                                    </DockPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                     <TextBlock x:Name="DataFolderText" Style="{StaticResource Hint}"/>
-                    <Button Style="{StaticResource DangerButton}" Content="Log out of all sites" HorizontalAlignment="Left"
-                            Margin="28,0,0,0" Click="LogOut_Click"/>
+                    <StackPanel Orientation="Horizontal" Margin="28,0,0,0">
+                        <Button Style="{StaticResource DangerButton}" Content="Log out of all sites" Click="LogOut_Click"/>
+                        <Button Style="{StaticResource QuietLinkButton}" Content="Refresh" Margin="14,0,0,0"
+                                VerticalAlignment="Center" Click="AccountRefresh_Click"
+                                ToolTip="Check again which AIs you're signed in to"/>
+                    </StackPanel>
                 </StackPanel>
             </Border>
 

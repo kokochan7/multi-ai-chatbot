@@ -1,5 +1,8 @@
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
+using MultiAIChatbot.Controls;
 using MultiAIChatbot.Services;
 
 namespace MultiAIChatbot.Views;
@@ -7,6 +10,47 @@ namespace MultiAIChatbot.Views;
 public partial class SettingsView : UserControl
 {
     public sealed record ColumnRow(string Key, string Name, bool Shown);
+
+    /// <summary>One AI's account row: whether it's signed in, and which buttons to show.</summary>
+    public sealed class AccountRow : INotifyPropertyChanged
+    {
+        public required string Key { get; init; }
+        public required string Name { get; init; }
+        public required Brush Color { get; init; }
+
+        private string _status = "Checking…";
+        private bool? _signedIn;
+
+        public string Status { get => _status; set { _status = value; Changed(nameof(Status)); } }
+
+        public bool? SignedIn
+        {
+            get => _signedIn;
+            set
+            {
+                _signedIn = value;
+                Changed(nameof(SignInVisibility));
+                Changed(nameof(DisconnectVisibility));
+            }
+        }
+
+        // Unknown (browser still starting): show both buttons.
+        public Visibility SignInVisibility => SignedIn == true ? Visibility.Collapsed : Visibility.Visible;
+        public Visibility DisconnectVisibility => SignedIn == false ? Visibility.Collapsed : Visibility.Visible;
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+        private void Changed(string name) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+    }
+
+    private readonly List<AccountRow> _accounts = AiSites.AllKeys.Select(k => new AccountRow
+    {
+        Key = k,
+        Name = AiSites.DisplayName(k),
+        Color = (Brush)new BrushConverter().ConvertFromString(AiSites.Color(k))!,
+    }).ToList();
+
+    /// <summary>Raised when Sign in is clicked, so the window can switch to the Chat page.</summary>
+    public event Action? ShowChatRequested;
 
     private bool _loading;
     private UpdateInfo? _pendingUpdate;
@@ -32,6 +76,10 @@ public partial class SettingsView : UserControl
         InitializeComponent();
         DataFolderText.Text = "Your website logins, history and settings are stored only on this PC, in " +
                               AppState.Folder;
+        AccountList.ItemsSource = _accounts;
+        // Check the logins whenever Settings is opened or a browser finishes starting.
+        IsVisibleChanged += (_, _) => { if (IsVisible) _ = RefreshAccountsAsync(); };
+        AiPane.BrowserReady += () => { if (IsVisible) _ = RefreshAccountsAsync(); };
         VersionText.Text = $"You have version {Updater.CurrentVersionText}.";
         Refresh();
     }
@@ -114,6 +162,65 @@ public partial class SettingsView : UserControl
         StatusText.Text = "History cleared.";
     }
 
+    // ---- Accounts ----
+
+    private async Task RefreshAccountsAsync()
+    {
+        foreach (var row in _accounts)
+        {
+            if (!AiPane.All.TryGetValue(row.Key, out var pane) || !pane.IsReady)
+            {
+                row.SignedIn = null;
+                row.Status = "Starting…";
+                continue;
+            }
+            var signedIn = await pane.IsSignedInAsync();
+            row.SignedIn = signedIn;
+            row.Status = signedIn switch
+            {
+                true => "Signed in",
+                false => "Not signed in",
+                null => "Couldn't check",
+            };
+        }
+    }
+
+    private void AccountRefresh_Click(object sender, RoutedEventArgs e) => _ = RefreshAccountsAsync();
+
+    private void AccountSignIn_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string key } || !AiPane.All.TryGetValue(key, out var pane)) return;
+        if (AppState.Settings.HiddenSites.Contains(key))
+        {
+            // Its column has to be on screen to sign in.
+            AppState.Settings.HiddenSites.Remove(key);
+            AppState.SaveSettings();
+            Refresh();
+        }
+        pane.OpenSignIn();
+        ShowChatRequested?.Invoke();
+    }
+
+    private async void AccountDisconnect_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string key } || !AiPane.All.TryGetValue(key, out var pane)) return;
+        var name = AiSites.DisplayName(key);
+        var answer = MessageBox.Show(Window.GetWindow(this)!,
+            $"Disconnect {name}? This signs you out of {name} in this app and clears its saved site data. The other AIs stay signed in.",
+            $"Disconnect {name}", MessageBoxButton.YesNo, MessageBoxImage.Question);
+        if (answer != MessageBoxResult.Yes) return;
+        try
+        {
+            await pane.DisconnectAsync();
+            StatusText.Text = $"Disconnected {name}.";
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = $"Couldn't disconnect {name}: {ex.Message}";
+        }
+        await RefreshAccountsAsync();
+    }
+
     private async void LogOut_Click(object sender, RoutedEventArgs e)
     {
         var answer = MessageBox.Show(Window.GetWindow(this)!,
@@ -125,6 +232,7 @@ public partial class SettingsView : UserControl
         {
             await AppState.LogOutAllAsync();
             StatusText.Text = "Logged out of all sites.";
+            await RefreshAccountsAsync();
         }
         catch (Exception ex)
         {

@@ -57,10 +57,17 @@ public partial class AiPane : UserControl
         Loaded += OnLoaded;
     }
 
+    /// <summary>Every column by site key, so Settings can manage each account.</summary>
+    public static Dictionary<string, AiPane> All { get; } = new();
+
+    /// <summary>Raised when a column's browser is ready (or restarted), so Settings can refresh.</summary>
+    public static event Action? BrowserReady;
+
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
         if (_initStarted) return;   // Loaded fires again when the view is shown after being hidden.
         _initStarted = true;
+        All[SiteKey] = this;
         Theme.Changed += ApplyColorScheme;
         await StartBrowserAsync();
     }
@@ -96,7 +103,11 @@ public partial class AiPane : UserControl
         try
         {
             env = await BrowserEnvironment.GetAsync();
-            await Browser.EnsureCoreWebView2Async(env);
+            // Each site gets its own browser profile, so its login (cookies) is separate:
+            // signing in to one site with Google doesn't sign you in to the others.
+            var options = env.CreateCoreWebView2ControllerOptions();
+            options.ProfileName = BrowserEnvironment.ProfileNameFor(SiteKey);
+            await Browser.EnsureCoreWebView2Async(env, options);
         }
         catch (WebView2RuntimeNotFoundException)
         {
@@ -122,6 +133,7 @@ public partial class AiPane : UserControl
         Browser.Visibility = Visibility.Visible;
         StatusPanel.Visibility = Visibility.Collapsed;
         GoHome();
+        BrowserReady?.Invoke();
     }
 
     private void OnProcessFailed(CoreWebView2Environment env, CoreWebView2ProcessFailedEventArgs args)
@@ -310,11 +322,44 @@ public partial class AiPane : UserControl
             : Task.FromResult("");
     }
 
-    /// <summary>Clears this site's saved login and cookies (shared profile, so it affects all columns).</summary>
+    /// <summary>Clears this site's saved login, cookies and site data (this column's own profile only).</summary>
     public async Task ClearBrowsingDataAsync()
     {
         if (Core is { } core)
             await core.Profile.ClearBrowsingDataAsync();
+    }
+
+    /// <summary>True when the site's login cookie is present, false when not, null while the browser isn't ready.</summary>
+    public async Task<bool?> IsSignedInAsync()
+    {
+        if (Core is not { } core) return null;
+        var (url, names) = AiSites.LoginCookie(SiteKey);
+        if (url.Length == 0) return null;
+        try
+        {
+            var cookies = await core.CookieManager.GetCookiesAsync(url);
+            return cookies.Any(c => names.Any(n => c.Name == n || c.Name.StartsWith(n + ".")));
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public bool IsReady => Core != null;
+
+    /// <summary>Opens the site's sign-in page in this column.</summary>
+    public void OpenSignIn()
+    {
+        var url = AiSites.SignInUrl(SiteKey);
+        if (Core is { } core && Uri.TryCreate(url, UriKind.Absolute, out var uri)) core.Navigate(uri.ToString());
+    }
+
+    /// <summary>Signs out of this site only: clears its profile's cookies and data, then reloads its start page.</summary>
+    public async Task DisconnectAsync()
+    {
+        await ClearBrowsingDataAsync();
+        GoHome();
     }
 
     private CancellationTokenSource? _statusClear;

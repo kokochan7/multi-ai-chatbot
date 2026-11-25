@@ -41,6 +41,33 @@ public static class AiSites
         _ => key
     };
 
+    /// <summary>The site's sign-in page.</summary>
+    public static string SignInUrl(string key) => key switch
+    {
+        "chatgpt" => "https://chatgpt.com/auth/login",
+        "claude" => "https://claude.ai/login",
+        "gemini" => "https://accounts.google.com/ServiceLogin?continue=https%3A%2F%2Fgemini.google.com%2Fapp",
+        _ => ""
+    };
+
+    /// <summary>Where to look for the site's login cookie, and its names. Present means signed in.</summary>
+    public static (string Url, string[] Names) LoginCookie(string key) => key switch
+    {
+        "chatgpt" => ("https://chatgpt.com", new[] { "__Secure-next-auth.session-token" }),
+        "claude" => ("https://claude.ai", new[] { "sessionKey" }),
+        "gemini" => ("https://gemini.google.com", new[] { "__Secure-1PSID", "SID" }),
+        _ => ("", Array.Empty<string>())
+    };
+
+    /// <summary>The site's brand colour, for its dot in Settings.</summary>
+    public static string Color(string key) => key switch
+    {
+        "chatgpt" => "#10A37F",
+        "claude" => "#D97757",
+        "gemini" => "#4285F4",
+        _ => "#888888"
+    };
+
     public static SiteSelectors? ByKey(string key) => key.ToLowerInvariant() switch
     {
         "chatgpt" => ChatGpt,

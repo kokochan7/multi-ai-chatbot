@@ -61,10 +61,41 @@ public partial class AiPane : UserControl
     {
         if (_initStarted) return;   // Loaded fires again when the view is shown after being hidden.
         _initStarted = true;
+        Theme.Changed += ApplyColorScheme;
+        await StartBrowserAsync();
+    }
 
+    // Set when the embedded browser has crashed; touching it after that throws.
+    private bool _browserDead;
+    private bool _restarting;
+
+    /// <summary>
+    /// The live browser, or null while it is starting, after it crashed, or while it restarts.
+    /// Always use this instead of Browser.CoreWebView2, which throws once the browser has crashed.
+    /// </summary>
+    private CoreWebView2? Core
+    {
+        get
+        {
+            if (_browserDead) return null;
+            try
+            {
+                return Browser.CoreWebView2;
+            }
+            catch (InvalidOperationException)
+            {
+                _browserDead = true;
+                return null;
+            }
+        }
+    }
+
+    private async Task StartBrowserAsync()
+    {
+        CoreWebView2Environment env;
         try
         {
-            var env = await BrowserEnvironment.GetAsync();
+            env = await BrowserEnvironment.GetAsync();
             await Browser.EnsureCoreWebView2Async(env);
         }
         catch (WebView2RuntimeNotFoundException)
@@ -76,6 +107,7 @@ public partial class AiPane : UserControl
         catch (Exception ex)
         {
             StatusText.Text = $"Couldn't start the browser: {ex.Message}";
+            CrashLog.Write($"{Title} browser failed to start", ex);
             return;
         }
 
@@ -84,33 +116,72 @@ public partial class AiPane : UserControl
         core.Settings.AreDevToolsEnabled = true;
         core.NavigationCompleted += (_, _) => UpdateButtons();
         core.HistoryChanged += (_, _) => UpdateButtons();
-        core.ProcessFailed += (_, args) =>
-        {
-            CrashLog.Write($"{Title} page process failed: {args.ProcessFailedKind}, {args.Reason}, exit code {args.ExitCode}", null);
-            if (args.ProcessFailedKind == CoreWebView2ProcessFailedKind.RenderProcessExited ||
-                args.ProcessFailedKind == CoreWebView2ProcessFailedKind.RenderProcessUnresponsive)
-            {
-                ShowStatus("Page crashed, reloading…", isError: true);
-                try { Browser.CoreWebView2?.Reload(); } catch { /* the browser may already be gone */ }
-            }
-            else
-            {
-                ShowStatus("Browser stopped. Restart the app if this column stays blank.", isError: true);
-            }
-        };
+        core.ProcessFailed += (_, args) => OnProcessFailed(env, args);
 
         ApplyColorScheme();
-        Theme.Changed += ApplyColorScheme;
-
         Browser.Visibility = Visibility.Visible;
         StatusPanel.Visibility = Visibility.Collapsed;
         GoHome();
     }
 
+    private void OnProcessFailed(CoreWebView2Environment env, CoreWebView2ProcessFailedEventArgs args)
+    {
+        CrashLog.Write($"{Title} browser process failed: {args.ProcessFailedKind}, {args.Reason}, exit code {args.ExitCode}", null);
+        switch (args.ProcessFailedKind)
+        {
+            case CoreWebView2ProcessFailedKind.BrowserProcessExited:
+                // The whole browser is gone and this control can't be used again: build a new one.
+                _browserDead = true;
+                Dispatcher.InvokeAsync(() => RestartBrowserAsync(env));
+                break;
+            case CoreWebView2ProcessFailedKind.RenderProcessExited:
+            case CoreWebView2ProcessFailedKind.RenderProcessUnresponsive:
+                ShowStatus("Page crashed, reloading…", isError: true);
+                try { Core?.Reload(); } catch { /* the browser may already be gone */ }
+                break;
+            // GPU and helper processes restart on their own.
+        }
+    }
+
+    /// <summary>Replaces a crashed browser with a fresh one and reopens this column's site.</summary>
+    private async Task RestartBrowserAsync(CoreWebView2Environment deadEnv)
+    {
+        if (_restarting) return;
+        _restarting = true;
+        try
+        {
+            ShowStatus("Browser crashed, restarting…", isError: true);
+            StatusText.Text = "Restarting…";
+            StatusPanel.Visibility = Visibility.Visible;
+
+            var host = (Panel)Browser.Parent;
+            var old = Browser;
+            host.Children.Remove(old);
+            try { old.Dispose(); } catch { /* already broken */ }
+
+            Browser = new Microsoft.Web.WebView2.Wpf.WebView2 { Visibility = Visibility.Hidden };
+            host.Children.Add(Browser);
+
+            BrowserEnvironment.Reset(deadEnv);
+            _browserDead = false;
+            await StartBrowserAsync();
+            if (Core != null) ShowStatus("Restarted after a browser crash", isError: false);
+        }
+        catch (Exception ex)
+        {
+            CrashLog.Write($"{Title} browser restart failed", ex);
+            StatusText.Text = "The browser crashed and couldn't restart. Please restart the app.";
+        }
+        finally
+        {
+            _restarting = false;
+        }
+    }
+
     /// <summary>Asks the AI sites to use light or dark mode to match the app.</summary>
     private void ApplyColorScheme()
     {
-        if (Browser.CoreWebView2 is not { } core) return;
+        if (Core is not { } core) return;
         core.Profile.PreferredColorScheme = AppState.Settings.Theme switch
         {
             Theme.DarkMode => CoreWebView2PreferredColorScheme.Dark,
@@ -184,13 +255,13 @@ public partial class AiPane : UserControl
 
     private void UpdateButtons()
     {
-        BackButton.IsEnabled = Browser.CoreWebView2?.CanGoBack == true;
+        BackButton.IsEnabled = Core?.CanGoBack == true;
     }
 
     public void GoHome()
     {
-        if (Browser.CoreWebView2 != null && Uri.TryCreate(HomeUrl, UriKind.Absolute, out var uri))
-            Browser.CoreWebView2.Navigate(uri.ToString());
+        if (Core is { } core && Uri.TryCreate(HomeUrl, UriKind.Absolute, out var uri))
+            core.Navigate(uri.ToString());
     }
 
     /// <summary>
@@ -200,7 +271,7 @@ public partial class AiPane : UserControl
     public async Task<Task<string>?> SendPromptAsync(string prompt, bool captureAnswer)
     {
         var site = AiSites.ByKey(SiteKey);
-        var core = Browser.CoreWebView2;
+        var core = Core;
         if (core == null || site == null)
         {
             ShowStatus("Not ready", isError: true);
@@ -235,8 +306,8 @@ public partial class AiPane : UserControl
     /// <summary>Clears this site's saved login and cookies (shared profile, so it affects all columns).</summary>
     public async Task ClearBrowsingDataAsync()
     {
-        if (Browser.CoreWebView2 != null)
-            await Browser.CoreWebView2.Profile.ClearBrowsingDataAsync();
+        if (Core is { } core)
+            await core.Profile.ClearBrowsingDataAsync();
     }
 
     private CancellationTokenSource? _statusClear;
@@ -263,16 +334,16 @@ public partial class AiPane : UserControl
 
     private void Back_Click(object sender, RoutedEventArgs e)
     {
-        if (Browser.CoreWebView2?.CanGoBack == true) Browser.CoreWebView2.GoBack();
+        if (Core is { CanGoBack: true } core) core.GoBack();
     }
 
-    private void Reload_Click(object sender, RoutedEventArgs e) => Browser.CoreWebView2?.Reload();
+    private void Reload_Click(object sender, RoutedEventArgs e) => Core?.Reload();
 
     private void Home_Click(object sender, RoutedEventArgs e) => GoHome();
 
     private void OpenExternal_Click(object sender, RoutedEventArgs e)
     {
-        var url = Browser.CoreWebView2?.Source ?? HomeUrl;
+        var url = Core?.Source ?? HomeUrl;
         if (!string.IsNullOrWhiteSpace(url))
             Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
     }

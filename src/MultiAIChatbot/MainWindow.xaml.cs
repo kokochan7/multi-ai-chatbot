@@ -7,6 +7,8 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        VersionLabel.Text = $"Version {Services.Updater.CurrentVersionText}";
+        SourceInitialized += (_, _) => Services.Theme.ApplyTitleBar(this);
         HistoryPage.AskAgainRequested += prompt =>
         {
             NavChat.IsChecked = true;

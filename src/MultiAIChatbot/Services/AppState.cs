@@ -15,6 +15,8 @@ public sealed class AppSettings
     public List<string> HiddenSites { get; set; } = new();
     public bool SaveAnswers { get; set; } = true;
     public bool CheckForUpdatesOnStartup { get; set; } = true;
+    /// <summary>"System" (follow Windows), "Light" or "Dark".</summary>
+    public string Theme { get; set; } = "System";
 }
 
 /// <summary>One question and the three answers to it.</summary>

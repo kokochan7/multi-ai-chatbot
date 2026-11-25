@@ -8,7 +8,7 @@ namespace MultiAIChatbot.Views;
 
 public partial class ChatView : UserControl
 {
-    private const double ColumnGap = 12;
+    private const double ColumnGap = 14;
 
     private AiPane[] AllPanes => new[] { ChatGptPane, ClaudePane, GeminiPane };
 

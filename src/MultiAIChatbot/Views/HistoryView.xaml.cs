@@ -38,7 +38,11 @@ public partial class HistoryView : UserControl
         EmptyText.Visibility = AppState.History.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    private void SearchBox_TextChanged(object sender, TextChangedEventArgs e) => _view.Refresh();
+    private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        SearchPlaceholder.Visibility = SearchBox.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+        _view.Refresh();
+    }
 
     private void EntryList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {

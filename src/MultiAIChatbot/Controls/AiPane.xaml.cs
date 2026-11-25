@@ -73,9 +73,24 @@ public partial class AiPane : UserControl
         core.NavigationCompleted += (_, _) => UpdateButtons();
         core.HistoryChanged += (_, _) => UpdateButtons();
 
+        ApplyColorScheme();
+        Theme.Changed += ApplyColorScheme;
+
         Browser.Visibility = Visibility.Visible;
-        StatusText.Visibility = Visibility.Collapsed;
+        StatusPanel.Visibility = Visibility.Collapsed;
         GoHome();
+    }
+
+    /// <summary>Asks the AI sites to use light or dark mode to match the app.</summary>
+    private void ApplyColorScheme()
+    {
+        if (Browser.CoreWebView2 is not { } core) return;
+        core.Profile.PreferredColorScheme = AppState.Settings.Theme switch
+        {
+            Theme.DarkMode => CoreWebView2PreferredColorScheme.Dark,
+            Theme.LightMode => CoreWebView2PreferredColorScheme.Light,
+            _ => CoreWebView2PreferredColorScheme.Auto,
+        };
     }
 
     private void UpdateButtons()
@@ -140,9 +155,10 @@ public partial class AiPane : UserControl
     private async void ShowStatus(string text, bool isError)
     {
         SendStatus.Text = text;
-        SendStatus.Foreground = isError
-            ? new SolidColorBrush(Color.FromRgb(0xC6, 0x28, 0x28))
-            : (Brush)FindResource("TextMuted");
+        StatusPill.Visibility = string.IsNullOrEmpty(text) ? Visibility.Collapsed : Visibility.Visible;
+        SendStatus.SetResourceReference(TextBlock.ForegroundProperty, isError ? "ErrorText" : "TextMuted");
+        StatusPill.SetResourceReference(Border.BackgroundProperty, isError ? "DangerHover" : "NavHover");
+        SendStatus.ToolTip = text;
 
         _statusClear?.Cancel();
         if (text.EndsWith("…")) return;          // keep "Sending…" until the result arrives
@@ -151,6 +167,7 @@ public partial class AiPane : UserControl
         {
             await Task.Delay(isError ? 8000 : 3000, cts.Token);
             SendStatus.Text = "";
+            StatusPill.Visibility = Visibility.Collapsed;
         }
         catch (TaskCanceledException) { }
     }

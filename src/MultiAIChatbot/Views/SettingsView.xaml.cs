@@ -30,7 +30,22 @@ public partial class SettingsView : UserControl
             .ToList();
         SaveAnswersBox.IsChecked = s.SaveAnswers;
         AutoCheckBox.IsChecked = s.CheckForUpdatesOnStartup;
+        ThemeSystem.IsChecked = s.Theme is not (Theme.LightMode or Theme.DarkMode);
+        ThemeLight.IsChecked = s.Theme == Theme.LightMode;
+        ThemeDark.IsChecked = s.Theme == Theme.DarkMode;
         _loading = false;
+    }
+
+    private void Theme_Checked(object sender, RoutedEventArgs e)
+    {
+        if (_loading) return;
+        var mode = sender == ThemeDark ? Theme.DarkMode
+                 : sender == ThemeLight ? Theme.LightMode
+                 : Theme.FollowWindows;
+        if (AppState.Settings.Theme == mode) return;
+        AppState.Settings.Theme = mode;
+        AppState.SaveSettings();
+        Theme.Apply(mode);
     }
 
     private void Shown_Click(object sender, RoutedEventArgs e)

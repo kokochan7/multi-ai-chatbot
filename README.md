@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/logo.png" width="96" alt="Multi-AI Chatbot logo"></p>
+
 # Multi-AI Chatbot
 
 A lightweight Windows app: type one prompt and see ChatGPT, Claude and Gemini answer side by side in columns, so you can pick the best answer. Uses your own website logins.
@@ -27,7 +29,7 @@ If a site changes its page and sending stops working there, the fix is usually a
 ## History and Settings
 
 - **History** saves every question, plus each AI's answer once it finishes, on your PC. You can search, copy an answer, delete one entry, or use **Ask again**.
-- **Settings** lets you show or hide each AI, change the column order, turn answer saving on or off, clear history, log out of all sites, and update the app.
+- **Settings** lets you pick a light or dark theme (or follow Windows), show or hide each AI, change the column order, turn answer saving on or off, clear history, log out of all sites, and update the app.
 
 Everything is stored in `%LOCALAPPDATA%\MultiAIChatbot` and never leaves your PC.
 

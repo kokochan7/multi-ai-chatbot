@@ -9,9 +9,9 @@
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
-            <!-- Column header: badge, name, and browser buttons -->
-            <Border Grid.Row="0" BorderBrush="{StaticResource CardBorder}" BorderThickness="0,0,0,1"
-                    Margin="14,0" Padding="0,10">
+            <!-- Column header: badge, name, status and browser buttons -->
+            <Border Grid.Row="0" BorderBrush="{DynamicResource Divider}" BorderThickness="0,0,0,1"
+                    Padding="14,10,10,10">
                 <DockPanel LastChildFill="True">
                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                         <Button x:Name="BackButton" Style="{StaticResource IconButton}" Content="&#xE72B;"
@@ -24,25 +24,30 @@
                                 ToolTip="Open this page in your web browser" Click="OpenExternal_Click"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <Border x:Name="BadgeBorder" Width="22" Height="22" CornerRadius="5" Margin="0,0,9,0">
-                            <TextBlock x:Name="BadgeText" Foreground="White" FontWeight="Bold" FontSize="12"
+                        <Border x:Name="BadgeBorder" Width="26" Height="26" CornerRadius="8" Margin="0,0,10,0">
+                            <TextBlock x:Name="BadgeText" Foreground="White" FontWeight="Bold" FontSize="12.5"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
-                        <TextBlock x:Name="TitleText" FontFamily="{StaticResource UiFont}" FontSize="15"
-                                   FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}"
-                                   VerticalAlignment="Center"/>
-                        <TextBlock x:Name="SendStatus" FontFamily="{StaticResource UiFont}" FontSize="12"
-                                   Foreground="{StaticResource TextMuted}" VerticalAlignment="Center"
-                                   Margin="10,0,0,0"/>
+                        <TextBlock x:Name="TitleText" FontSize="15" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
+                        <!-- Status pill: "Sending…", "Sent", or what went wrong -->
+                        <Border x:Name="StatusPill" CornerRadius="9" Padding="8,2" Margin="10,0,0,0"
+                                Background="{DynamicResource NavHover}" VerticalAlignment="Center" Visibility="Collapsed">
+                            <TextBlock x:Name="SendStatus" FontSize="11.5" Foreground="{DynamicResource TextMuted}"
+                                       TextTrimming="CharacterEllipsis"/>
+                        </Border>
                     </StackPanel>
                 </DockPanel>
             </Border>
 
             <!-- The website itself -->
-            <Grid Grid.Row="1" Margin="4,4,4,6">
-                <TextBlock x:Name="StatusText" Text="Loading…" Foreground="{StaticResource TextMuted}"
-                           FontFamily="{StaticResource UiFont}" FontSize="13" TextWrapping="Wrap"
-                           HorizontalAlignment="Center" VerticalAlignment="Center" Margin="20"/>
+            <Grid Grid.Row="1" Margin="1,0,1,1">
+                <StackPanel x:Name="StatusPanel" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="24">
+                    <TextBlock Text="&#xE895;" FontFamily="{StaticResource IconFont}" FontSize="22"
+                               Foreground="{DynamicResource TextMuted}" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                    <TextBlock x:Name="StatusText" Text="Loading…" Foreground="{DynamicResource TextMuted}"
+                               FontSize="13" TextWrapping="Wrap" TextAlignment="Center"/>
+                </StackPanel>
                 <wv2:WebView2 x:Name="Browser" Visibility="Hidden"/>
             </Grid>
         </Grid>

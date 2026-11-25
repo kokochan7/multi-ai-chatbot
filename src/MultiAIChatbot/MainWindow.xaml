@@ -3,30 +3,44 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:v="clr-namespace:MultiAIChatbot.Views"
         Title="Multi-AI Chatbot" Width="1500" Height="900" MinWidth="960" MinHeight="600"
-        WindowStartupLocation="CenterScreen" Background="{StaticResource AppBackground}"
-        FontFamily="{StaticResource UiFont}">
-    <Grid Margin="12">
+        Icon="Assets/app.ico"
+        WindowStartupLocation="CenterScreen" Background="{DynamicResource AppBackground}"
+        Foreground="{DynamicResource TextPrimary}"
+        FontFamily="{StaticResource UiFont}" UseLayoutRounding="True">
+    <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="210"/>
-            <ColumnDefinition Width="12"/>
+            <ColumnDefinition Width="232"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
         <!-- Left menu -->
-        <Border Grid.Column="0" Style="{StaticResource Card}" Padding="10,16">
+        <Border Grid.Column="0" Background="{DynamicResource SidebarBackground}"
+                BorderBrush="{DynamicResource CardBorder}" BorderThickness="0,0,1,0" Padding="14,20,14,16">
             <DockPanel>
-                <StackPanel DockPanel.Dock="Top" Margin="6,0,6,18" Orientation="Horizontal">
-                    <TextBlock Text="&#xE8BD;" FontFamily="Segoe MDL2 Assets" FontSize="18"
-                               Foreground="{StaticResource Accent}" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                    <TextBlock Text="Multi-AI Chat" FontSize="17" FontWeight="SemiBold"
-                               Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center"/>
+                <!-- Logo and app name -->
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="6,0,0,28">
+                    <Image Source="Assets/logo.png" Width="36" Height="36"
+                           RenderOptions.BitmapScalingMode="HighQuality" VerticalAlignment="Center"/>
+                    <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="Multi-AI Chat" FontFamily="{StaticResource DisplayFont}" FontSize="16"
+                                   FontWeight="SemiBold"/>
+                        <TextBlock Text="One question, every AI" FontSize="11.5"
+                                   Foreground="{DynamicResource TextMuted}" Margin="0,1,0,0"/>
+                    </StackPanel>
                 </StackPanel>
 
-                <RadioButton DockPanel.Dock="Bottom" x:Name="NavSettings" GroupName="Nav"
-                             Style="{StaticResource NavButton}" Tag="&#xE713;" Content="Settings"
-                             Checked="Nav_Checked"/>
+                <!-- Bottom: settings and version -->
+                <StackPanel DockPanel.Dock="Bottom">
+                    <Border Height="1" Background="{DynamicResource Divider}" Margin="4,0,4,10"/>
+                    <RadioButton x:Name="NavSettings" GroupName="Nav"
+                                 Style="{StaticResource NavButton}" Tag="&#xE713;" Content="Settings"
+                                 Checked="Nav_Checked"/>
+                    <TextBlock x:Name="VersionLabel" FontSize="11" Foreground="{DynamicResource TextMuted}"
+                               Margin="12,10,0,0"/>
+                </StackPanel>
 
                 <StackPanel>
+                    <TextBlock Text="MENU" Style="{StaticResource SectionLabel}" Margin="12,0,0,8"/>
                     <RadioButton x:Name="NavChat" GroupName="Nav" Style="{StaticResource NavButton}"
                                  Tag="&#xE8F2;" Content="Chat" IsChecked="True" Checked="Nav_Checked"/>
                     <RadioButton x:Name="NavHistory" GroupName="Nav" Style="{StaticResource NavButton}"
@@ -36,7 +50,7 @@
         </Border>
 
         <!-- Pages. All stay loaded so the AI sites keep their state when you switch pages. -->
-        <Grid Grid.Column="2">
+        <Grid Grid.Column="1" Margin="16">
             <v:ChatView x:Name="ChatPage"/>
             <v:HistoryView x:Name="HistoryPage" Visibility="Collapsed"/>
             <v:SettingsView x:Name="SettingsPage" Visibility="Collapsed"/>

@@ -20,38 +20,51 @@
         </Grid>
 
         <!-- Shared prompt box: one question goes to all three sites -->
-        <Border Grid.Row="1" Style="{StaticResource Card}" Margin="0,12,0,0" Padding="16,10">
-            <DockPanel>
-                <Button x:Name="SendButton" DockPanel.Dock="Right" Width="38" Height="38"
-                        ToolTip="Send to all three (Enter)" Cursor="Hand" Click="Send_Click">
-                    <Button.Template>
-                        <ControlTemplate TargetType="Button">
-                            <Border x:Name="Bg" Background="{StaticResource Accent}" CornerRadius="19">
-                                <TextBlock Text="&#xE74A;" FontFamily="Segoe MDL2 Assets" FontSize="16"
-                                           Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            </Border>
-                            <ControlTemplate.Triggers>
-                                <Trigger Property="IsEnabled" Value="False">
-                                    <Setter TargetName="Bg" Property="Opacity" Value="0.4"/>
-                                </Trigger>
-                            </ControlTemplate.Triggers>
-                        </ControlTemplate>
-                    </Button.Template>
-                </Button>
-                <Button DockPanel.Dock="Left" Style="{StaticResource IconButton}" Content="&#xE710;"
-                        Width="38" Height="38" FontSize="16" Margin="0,0,8,0"
-                        ToolTip="New chat on all three sites" Click="NewChat_Click"/>
-                <Grid Margin="0,0,12,0">
-                    <TextBox x:Name="PromptBox" BorderThickness="0" FontFamily="{StaticResource UiFont}" FontSize="15"
-                             VerticalContentAlignment="Center" MinHeight="38" MaxHeight="160"
-                             TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto"
-                             PreviewKeyDown="PromptBox_PreviewKeyDown" TextChanged="PromptBox_TextChanged"/>
-                    <TextBlock x:Name="Placeholder" IsHitTestVisible="False" Margin="3,0,0,0"
-                               Text="Ask all three AIs… (Enter to send, Shift+Enter for a new line)"
-                               FontFamily="{StaticResource UiFont}" FontSize="15"
-                               Foreground="{StaticResource TextMuted}" VerticalAlignment="Center"/>
-                </Grid>
-            </DockPanel>
-        </Border>
+        <Grid Grid.Row="1" Margin="0,14,0,0" MaxWidth="1100">
+            <!-- Soft shadow drawn behind the bar (kept separate so the text stays sharp) -->
+            <Border CornerRadius="18" Background="{DynamicResource CardBackground}" Margin="2">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="24" ShadowDepth="4" Direction="270" Opacity="0.10"
+                                      Color="{StaticResource ShadowColor}"/>
+                </Border.Effect>
+            </Border>
+            <Border CornerRadius="18" Background="{DynamicResource CardBackground}"
+                    BorderBrush="{DynamicResource CardBorder}" BorderThickness="1" Padding="10,8">
+                <DockPanel>
+                    <Button x:Name="SendButton" DockPanel.Dock="Right" Width="40" Height="40"
+                            ToolTip="Send to all (Enter)" Cursor="Hand" Click="Send_Click" VerticalAlignment="Bottom">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border x:Name="Bg" Background="{DynamicResource Accent}" CornerRadius="12">
+                                    <TextBlock Text="&#xE724;" FontFamily="{StaticResource IconFont}" FontSize="16"
+                                               Foreground="{DynamicResource OnAccent}"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Bg" Property="Background" Value="{DynamicResource AccentHover}"/>
+                                    </Trigger>
+                                    <Trigger Property="IsEnabled" Value="False">
+                                        <Setter TargetName="Bg" Property="Opacity" Value="0.4"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+                    <Button DockPanel.Dock="Left" Style="{StaticResource IconButton}" Content="&#xE710;"
+                            Width="40" Height="40" FontSize="16" Margin="0,0,6,0" VerticalAlignment="Bottom"
+                            ToolTip="New chat on all sites" Click="NewChat_Click"/>
+                    <Grid Margin="4,0,12,0">
+                        <TextBox x:Name="PromptBox" BorderThickness="0" Background="Transparent" Padding="0"
+                                 FontSize="15" VerticalContentAlignment="Center" MinHeight="40" MaxHeight="180"
+                                 TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto"
+                                 PreviewKeyDown="PromptBox_PreviewKeyDown" TextChanged="PromptBox_TextChanged"/>
+                        <TextBlock x:Name="Placeholder" IsHitTestVisible="False" Margin="2,0,0,0"
+                                   Text="Ask all your AIs at once…   Enter to send · Shift+Enter for a new line"
+                                   FontSize="15" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
+                    </Grid>
+                </DockPanel>
+            </Border>
+        </Grid>
     </Grid>
 </UserControl>

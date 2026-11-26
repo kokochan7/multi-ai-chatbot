@@ -153,6 +153,9 @@ public static class AnswerComparer
         if (label.Success && label.Groups["label"].Value.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length <= 4)
             name = label.Groups["rest"].Value;
         name = IntroPrefix.Replace(name, "");
+        // "an RGB-stripe WOLED, such as the ASUS ROG Swift PG27UCWM" -> the named example
+        var example = Regex.Match(name, @"(?:,\s*|\s)(?:such as|like|e\.g\.)\s+(?:the\s+)?(?<x>.+)$", RegexOptions.IgnoreCase);
+        if (example.Success) name = example.Groups["x"].Value;
         return Tidy(name);
     }
 
@@ -177,6 +180,11 @@ public static class AnswerComparer
         var setA = new HashSet<string>(a);
         var setB = new HashSet<string>(b);
         if (setA.SetEquals(setB)) return 1;
+        // Different model numbers are different products, however much else matches
+        // ("ROG Swift PG27UCDM" vs "ROG Swift PG27UCWM").
+        var modelsA = setA.Where(t => t.Any(char.IsDigit)).ToList();
+        var modelsB = setB.Where(t => t.Any(char.IsDigit)).ToList();
+        if (modelsA.Count > 0 && modelsB.Count > 0 && !modelsA.Intersect(modelsB).Any()) return 0;
         var (small, big) = setA.Count <= setB.Count ? (setA, setB) : (setB, setA);
         if (small.Count >= 2 && small.IsSubsetOf(big)) return 0.9;
         var shared = setA.Intersect(setB).Count();

@@ -402,6 +402,54 @@ public partial class AiPane : UserControl
         catch { return ""; }
     }
 
+    // ---- Search all AIs (Ctrl+F) ----
+    // The WPF WebView2 control passes Ctrl+F, F3 and Esc pressed inside a site on as normal
+    // key events, so MainWindow's key handler sees them and ChatView runs the search.
+
+    private static readonly string FindScript = LoadScriptResource("find-text.js");
+
+    private static string LoadScriptResource(string fileName)
+    {
+        var asm = System.Reflection.Assembly.GetExecutingAssembly();
+        var name = asm.GetManifestResourceNames().First(n => n.EndsWith(fileName, StringComparison.OrdinalIgnoreCase));
+        using var reader = new System.IO.StreamReader(asm.GetManifestResourceStream(name)!);
+        return reader.ReadToEnd();
+    }
+
+    /// <summary>
+    /// Finds <paramref name="query"/> on this column's page and highlights every match.
+    /// step: 0 searches again, 1 moves to the next match, -1 to the previous one.
+    /// Returns (matches, current match index), or null if the page couldn't be searched.
+    /// </summary>
+    public async Task<(int Count, int Index)?> FindAsync(string query, int step)
+    {
+        if (Core is not { } core) return null;
+        var script = FindScript
+            .Replace("__QUERY__", System.Text.Json.JsonSerializer.Serialize(query))
+            .Replace("__STEP__", step.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        try
+        {
+            var json = System.Text.Json.JsonSerializer.Deserialize<string>(await core.ExecuteScriptAsync(script));
+            if (json is null) return null;
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            if (root.TryGetProperty("error", out _)) return null;
+            return (root.GetProperty("count").GetInt32(), root.GetProperty("index").GetInt32());
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Removes the search highlights from this column's page.</summary>
+    public async Task ClearFindAsync()
+    {
+        if (Core is not { } core) return;
+        try { await core.ExecuteScriptAsync(FindScript.Replace("__QUERY__", "\"\"").Replace("__STEP__", "'clear'")); }
+        catch { /* page gone or navigating */ }
+    }
+
     /// <summary>Opens the site's sign-in page in this column.</summary>
     public void OpenSignIn()
     {

@@ -37,6 +37,8 @@ public partial class ChatView : UserControl
         AppState.SettingsChanged += ApplyLayout;
         AppState.LogOutRequested += LogOutAllAsync;
         Loaded += (_, _) => PromptBox.Focus();
+        _findDelay.Tick += (_, _) => { _findDelay.Stop(); _ = RunFindAsync(0); };
+        AppState.SettingsChanged += () => { if (FindBar.Visibility == Visibility.Visible) BuildFindCounts(); };
 
         // Ctrl+V of a picture or copied files attaches them instead of pasting nothing.
         CommandManager.AddPreviewCanExecuteHandler(PromptBox, PromptBox_PreviewCanPaste);
@@ -145,6 +147,157 @@ public partial class ChatView : UserControl
     }
 
     private void Pane_HeaderDragCancelled(AiPane source) => SetDropTarget(null);
+
+    // ---- Search all AIs (Ctrl+F) ----
+
+    private readonly System.Windows.Threading.DispatcherTimer _findDelay =
+        new() { Interval = TimeSpan.FromMilliseconds(220) };
+    private int _findRun;
+
+    /// <summary>
+    /// Handles Ctrl+F, F3 / Shift+F3, Ctrl+G and Esc for the search bar. MainWindow passes every key
+    /// here while the Chat page is showing, including keys pressed inside a website.
+    /// </summary>
+    public void HandleFindKey(KeyEventArgs e)
+    {
+        var key = e.Key == Key.System ? e.SystemKey : e.Key;
+        var mods = Keyboard.Modifiers;
+        var ctrl = (mods & ModifierKeys.Control) != 0 && (mods & ModifierKeys.Alt) == 0;
+        var shift = (mods & ModifierKeys.Shift) != 0;
+        if (key == Key.F && ctrl)
+        {
+            OpenFind();
+        }
+        else if (key == Key.F3 || (key == Key.G && ctrl))
+        {
+            if (FindBar.Visibility != Visibility.Visible) OpenFind();
+            else _ = RunFindAsync(shift ? -1 : 1);
+        }
+        else if (key == Key.Escape && FindBar.Visibility == Visibility.Visible)
+        {
+            CloseFind();
+        }
+        else return;
+        e.Handled = true;
+    }
+
+    /// <summary>Shows the search bar and puts the cursor in it (searching again if it already has text).</summary>
+    public void OpenFind()
+    {
+        var wasOpen = FindBar.Visibility == Visibility.Visible;
+        FindBar.Visibility = Visibility.Visible;
+        if (!wasOpen) BuildFindCounts();
+        Dispatcher.InvokeAsync(() =>
+        {
+            FindBox.Focus();
+            Keyboard.Focus(FindBox);
+            FindBox.SelectAll();
+        }, System.Windows.Threading.DispatcherPriority.Input);
+        if (!wasOpen && FindBox.Text.Length > 0) _ = RunFindAsync(0);
+    }
+
+    private void CloseFind()
+    {
+        _findDelay.Stop();
+        _findRun++;
+        FindBar.Visibility = Visibility.Collapsed;
+        foreach (var pane in AllPanes) _ = pane.ClearFindAsync();
+        PromptBox.Focus();
+    }
+
+    private void OpenFind_Click(object sender, RoutedEventArgs e) => OpenFind();
+    private void FindClose_Click(object sender, RoutedEventArgs e) => CloseFind();
+    private void FindNext_Click(object sender, RoutedEventArgs e) => _ = RunFindAsync(1);
+    private void FindPrevious_Click(object sender, RoutedEventArgs e) => _ = RunFindAsync(-1);
+
+    private void FindBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        FindPlaceholder.Visibility = FindBox.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+        // Search as you type, after a short pause so each keystroke doesn't search three pages.
+        _findDelay.Stop();
+        _findDelay.Start();
+    }
+
+    private void FindBox_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            e.Handled = true;
+            // Enter right after typing runs the pending search first; after that it moves on.
+            var pending = _findDelay.IsEnabled;
+            _findDelay.Stop();
+            _ = RunFindAsync(pending ? 0 : (Keyboard.Modifiers & ModifierKeys.Shift) != 0 ? -1 : 1);
+        }
+        else if (e.Key == Key.Escape)
+        {
+            e.Handled = true;
+            CloseFind();
+        }
+    }
+
+    // One count label per shown column, in column order.
+    private readonly Dictionary<AiPane, TextBlock> _findCountText = new();
+
+    private void BuildFindCounts()
+    {
+        FindCounts.Children.Clear();
+        _findCountText.Clear();
+        foreach (var pane in VisiblePanes)
+        {
+            var dot = new System.Windows.Shapes.Ellipse { Width = 7, Height = 7, Fill = pane.Accent, Margin = new Thickness(0, 0, 5, 0), VerticalAlignment = VerticalAlignment.Center };
+            var label = new TextBlock { FontSize = 12, VerticalAlignment = VerticalAlignment.Center };
+            label.SetResourceReference(TextBlock.ForegroundProperty, "TextMuted");
+            var chip = new Border
+            {
+                CornerRadius = new CornerRadius(8),
+                Padding = new Thickness(8, 2, 8, 2),
+                Margin = new Thickness(0, 0, 4, 0),
+                Child = new StackPanel { Orientation = Orientation.Horizontal, Children = { dot, label } },
+            };
+            chip.SetResourceReference(Border.BackgroundProperty, "NavHover");
+            FindCounts.Children.Add(chip);
+            _findCountText[pane] = label;
+            SetFindCount(pane, null, empty: true);
+        }
+    }
+
+    private void SetFindCount(AiPane pane, (int Count, int Index)? result, bool empty = false)
+    {
+        if (!_findCountText.TryGetValue(pane, out var label)) return;
+        label.Text = empty ? pane.Title
+            : result is not { } r ? $"{pane.Title} –"
+            : r.Count == 0 ? $"{pane.Title} 0"
+            : $"{pane.Title} {r.Index + 1}/{r.Count}";
+        label.ToolTip = empty ? null
+            : result is null ? "This page couldn't be searched yet"
+            : $"{result.Value.Count} match{(result.Value.Count == 1 ? "" : "es")} on {pane.Title}";
+        var found = result is { } hit && hit.Count > 0;
+        label.SetResourceReference(TextBlock.ForegroundProperty, found ? "TextPrimary" : "TextMuted");
+        label.FontWeight = found ? FontWeights.SemiBold : FontWeights.Normal;
+    }
+
+    /// <summary>Searches every shown column at once (step 0 = from the top, 1 = next, -1 = previous).</summary>
+    private async Task RunFindAsync(int step)
+    {
+        if (FindBar.Visibility != Visibility.Visible) return;
+        var run = ++_findRun;
+        var query = FindBox.Text;
+        var panes = VisiblePanes.ToList();
+        if (panes.Count != _findCountText.Count || panes.Any(p => !_findCountText.ContainsKey(p))) BuildFindCounts();
+
+        if (query.Length == 0)
+        {
+            foreach (var pane in panes) { _ = pane.ClearFindAsync(); SetFindCount(pane, null, empty: true); }
+            FindBar.SetResourceReference(Border.BorderBrushProperty, "Accent");
+            return;
+        }
+
+        var results = await Task.WhenAll(panes.Select(p => p.FindAsync(query, step)));
+        if (run != _findRun) return;   // a newer search already started
+        for (var i = 0; i < panes.Count; i++) SetFindCount(panes[i], results[i]);
+        var none = results.All(r => r is null || r.Value.Count == 0);
+        FindBar.SetResourceReference(Border.BorderBrushProperty, none ? "ErrorText" : "Accent");
+    }
 
     private void PromptBox_PreviewKeyDown(object sender, KeyEventArgs e)
     {

@@ -87,26 +87,63 @@ public sealed class HistoryEntry : INotifyPropertyChanged
 /// </summary>
 public sealed class Conversation : INotifyPropertyChanged
 {
+    private string? _customTitle;
+    private bool _pinned, _isRenaming;
+
     public Guid Id { get; init; }
 
     /// <summary>Oldest first.</summary>
     public ObservableCollection<HistoryEntry> Entries { get; } = new();
 
-    public string Title => Entries.Count > 0 ? Entries[0].Prompt : "";
+    /// <summary>The name the user gave the chat (right-click > Rename), or its first question.</summary>
+    public string Title => !string.IsNullOrWhiteSpace(_customTitle) ? _customTitle! : Entries.Count > 0 ? Entries[0].Prompt : "";
     public DateTime Time => Entries.Count > 0 ? Entries[^1].Time : DateTime.MinValue;
     public string TimeText => Time.ToString("MMM d, h:mm tt");
     public string CountText => Entries.Count == 1 ? "1 question" : $"{Entries.Count} questions";
+
+    /// <summary>Null when the chat uses its first question as its name.</summary>
+    public string? CustomTitle
+    {
+        get => _customTitle;
+        set { _customTitle = string.IsNullOrWhiteSpace(value) ? null : value.Trim(); Changed(); Changed(nameof(Title)); }
+    }
+
+    /// <summary>Pinned chats stay at the top of Recent.</summary>
+    public bool Pinned
+    {
+        get => _pinned;
+        set { _pinned = value; Changed(); Changed(nameof(PinMenuText)); }
+    }
+
+    public string PinMenuText => _pinned ? "Unpin" : "Pin to top";
+
+    /// <summary>True while its name is being edited in the Recent list (not saved).</summary>
+    public bool IsRenaming
+    {
+        get => _isRenaming;
+        set { _isRenaming = value; Changed(); }
+    }
 
     public Conversation()
     {
         Entries.CollectionChanged += (_, _) =>
         {
             foreach (var name in new[] { nameof(Title), nameof(Time), nameof(TimeText), nameof(CountText) })
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+                Changed(name);
         };
     }
 
+    private void Changed([CallerMemberName] string? name = null) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+
     public event PropertyChangedEventHandler? PropertyChanged;
+}
+
+/// <summary>A chat's name and pin, saved to chats.json by chat id.</summary>
+public sealed class ChatInfo
+{
+    public string? Title { get; set; }
+    public bool Pinned { get; set; }
 }
 
 /// <summary>
@@ -120,6 +157,7 @@ public static class AppState
 
     private static string SettingsFile => Path.Combine(Folder, "settings.json");
     private static string HistoryFile => Path.Combine(Folder, "history.json");
+    private static string ChatsFile => Path.Combine(Folder, "chats.json");
 
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true };
 
@@ -159,8 +197,25 @@ public static class AppState
                 return chat;
             })
             .OrderByDescending(c => c.Time);
-        foreach (var chat in chats) Conversations.Add(chat);
+        var info = Load<Dictionary<Guid, ChatInfo>>(ChatsFile) ?? new();
+        foreach (var chat in chats)
+        {
+            if (info.TryGetValue(chat.Id, out var i))
+            {
+                chat.CustomTitle = i.Title;
+                chat.Pinned = i.Pinned;
+            }
+            Conversations.Add(chat);
+        }
     }
+
+    /// <summary>Saves the chats' names and pins (right-click > Rename / Pin on Recent).</summary>
+    public static void SaveChats() => Save(ChatsFile,
+        Conversations.Where(c => c.CustomTitle != null || c.Pinned)
+            .ToDictionary(c => c.Id, c => new ChatInfo { Title = c.CustomTitle, Pinned = c.Pinned }));
+
+    /// <summary>The chat a question belongs to.</summary>
+    public static Conversation? ChatOf(HistoryEntry entry) => Conversations.FirstOrDefault(c => c.Entries.Contains(entry));
 
     public static void SaveSettings()
     {
@@ -203,6 +258,7 @@ public static class AppState
         foreach (var entry in chat.Entries) History.Remove(entry);
         Conversations.Remove(chat);
         SaveHistory();
+        SaveChats();
     }
 
     public static void ClearHistory()
@@ -211,6 +267,7 @@ public static class AppState
         History.Clear();
         Conversations.Clear();
         SaveHistory();
+        SaveChats();
     }
 
     public static async Task LogOutAllAsync()

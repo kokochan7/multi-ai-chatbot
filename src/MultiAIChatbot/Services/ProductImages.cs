@@ -21,13 +21,18 @@ namespace MultiAIChatbot.Services;
 public static class ProductImages
 {
     private static readonly string CacheFolder = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MultiAIChatbot", "image-cache2");
+    // The first version picked up Bing's page decorations instead of results; its pictures are dropped.
+    private static readonly string OldCacheFolder = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MultiAIChatbot", "image-cache");
 
     private static readonly HttpClient Http = CreateClient();
     private static readonly SemaphoreSlim Gate = new(4);
     private static readonly ConcurrentDictionary<string, Task<ImageSource?>> Memory = new(StringComparer.OrdinalIgnoreCase);
 
-    private static readonly Regex BingThumb = new("\"turl\":\"(https?://[^\"]+)\"", RegexOptions.Compiled);
+    // Each image result is an <a class="iusc" m="{json}"> link; the JSON holds its thumbnail (turl).
+    private static readonly Regex BingResult = new("<a\\b[^>]*\\bclass=\"[^\"]*\\biusc\\b[^\"]*\"[^>]*>", RegexOptions.Compiled);
+    private static readonly Regex MAttribute = new("\\sm=\"([^\"]+)\"", RegexOptions.Compiled);
 
     private static HttpClient CreateClient()
     {
@@ -84,7 +89,8 @@ public static class ProductImages
     public static void ForgetAll()
     {
         Memory.Clear();
-        try { if (Directory.Exists(CacheFolder)) Directory.Delete(CacheFolder, recursive: true); }
+        try { if (Directory.Exists(CacheFolder)) Directory.Delete(CacheFolder, recursive: true); } catch { }
+        try { if (Directory.Exists(OldCacheFolder)) Directory.Delete(OldCacheFolder, recursive: true); }
         catch { /* a picture still being written; it's harmless */ }
     }
 
@@ -98,6 +104,8 @@ public static class ProductImages
         try
         {
             Directory.CreateDirectory(CacheFolder);
+            if (Directory.Exists(OldCacheFolder))
+                try { Directory.Delete(OldCacheFolder, recursive: true); } catch { }
             var file = Path.Combine(CacheFolder, Hash(name));
             var none = file + ".none";
 
@@ -138,10 +146,25 @@ public static class ProductImages
     {
         var url = "https://www.bing.com/images/async?q=" + Uri.EscapeDataString(name) +
                   "&first=0&count=5&mmasync=1&adlt=strict";
-        var html = WebUtility.HtmlDecode(await Http.GetStringAsync(url));
-        var thumb = BingThumb.Matches(html).Select(m => m.Groups[1].Value).FirstOrDefault(u => u.Length > 0);
+        var html = await Http.GetStringAsync(url);
+        string? thumb = null;
+        foreach (Match link in BingResult.Matches(html))
+        {
+            var m = MAttribute.Match(link.Value);
+            if (!m.Success) continue;
+            try
+            {
+                using var json = JsonDocument.Parse(WebUtility.HtmlDecode(m.Groups[1].Value));
+                if (json.RootElement.TryGetProperty("turl", out var t) && t.GetString() is { Length: > 0 } u &&
+                    u.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+                {
+                    thumb = u;
+                    break;
+                }
+            }
+            catch (JsonException) { }
+        }
         if (thumb == null) return null;
-        thumb = thumb.Replace("\\/", "/");
         // Ask Bing for a square, centred crop at a size that stays sharp on high-DPI screens.
         return thumb + (thumb.Contains('?') ? "&" : "?") + "w=240&h=240&c=7";
     }

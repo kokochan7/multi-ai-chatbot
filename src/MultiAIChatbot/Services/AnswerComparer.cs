@@ -42,6 +42,16 @@ public static class AnswerComparer
     private static readonly Regex LeadingBold = new(@"^\s*\*\*(.+?)\*\*", RegexOptions.Compiled);
     private static readonly Regex Link = new(@"\[([^\]]+)\]\([^)]+\)", RegexOptions.Compiled);
     private static readonly Regex NameEnd = new(@"\s+[–—-]\s+|:\s|\s\(|\.\s", RegexOptions.Compiled);
+    // "Best premium option: X" -> X (only when the part before the colon is a short label).
+    private static readonly Regex LabelPrefix = new(@"^(?<label>[^:]{2,40}):\s+(?<rest>.+)$", RegexOptions.Compiled);
+    // "My top recommendation is the X", "I'd recommend the X", "Go with X" -> X
+    private static readonly Regex IntroPrefix = new(
+        @"^(?:(?:my|our|the)\s+)?(?:(?:top|best|overall|first|main|personal|clear|budget|premium|runner[- ]up)\s+)*" +
+        @"(?:pick|recommendation|choice|option|bet|suggestion|winner)s?\s+(?:is|are|would be|has to be)\s+(?:the\s+|an?\s+)?" +
+        @"|^(?:i(?:'d|’d| would)?\s+(?:recommend|suggest|pick|choose)|go with|consider|try|get)\s+(?:the\s+|an?\s+)?",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    // "X or Y", "X vs Y" name two items.
+    private static readonly Regex Alternatives = new(@"\s+(?:or|vs\.?|versus)\s+", RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex TableRule = new(@"^\|[\s:|-]+\|$", RegexOptions.Compiled);
 
     private sealed record Candidate(string Name, string[] Tokens, string Line);
@@ -88,8 +98,10 @@ public static class AnswerComparer
             .ThenBy(c => c.Positions.Average())
             .Select(c => new AgreedItem
             {
-                // The fullest name that's still short enough to read at a glance.
-                Name = c.Names.Where(n => n.Length <= 60).OrderByDescending(n => n.Length).FirstOrDefault() ?? c.Names[0],
+                // The cleanest name: the shortest one that still has at least two words
+                // (so "ASUS ROG Swift PG27UCDM" wins over a sentence that mentions it).
+                Name = c.Names.Where(n => Tokens(n).Length >= 2).OrderBy(n => n.Length).FirstOrDefault()
+                       ?? c.Names.OrderBy(n => n.Length).First(),
                 Mentions = c.Mentions,
             })
             .ToList();
@@ -118,7 +130,7 @@ public static class AnswerComparer
         }
 
         var seen = new HashSet<string>();
-        foreach (var (name, line) in found)
+        foreach (var (name, line) in found.SelectMany(f => Alternatives.Split(f.Name).Select(n => (Name: Tidy(n), f.Line))))
         {
             var tokens = Tokens(name);
             if (tokens.Length == 0 || tokens.Length > 10 || name.Length > 80 || name.EndsWith('?')) continue;
@@ -135,8 +147,16 @@ public static class AnswerComparer
         var name = lead.Success ? lead.Groups[1].Value : NameEnd.Split(item.Replace("**", "").Replace("__", ""), 2)[0];
         name = Link.Replace(name, "$1").Replace("`", "").Replace("*", "");
         name = Regex.Replace(name, @"^\d+[.)]\s*", "");
-        return name.Trim(' ', '.', ':', ';', ',', '-', '–', '—');
+        name = name.Trim(' ', '.', ':', ';', ',', '-', '–', '—');
+
+        var label = LabelPrefix.Match(name);
+        if (label.Success && label.Groups["label"].Value.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length <= 4)
+            name = label.Groups["rest"].Value;
+        name = IntroPrefix.Replace(name, "");
+        return Tidy(name);
     }
+
+    private static string Tidy(string name) => name.Trim(' ', '.', ':', ';', ',', '-', '–', '—', '!');
 
     private static string[] Tokens(string name)
     {

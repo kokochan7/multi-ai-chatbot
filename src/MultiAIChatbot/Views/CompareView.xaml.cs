@@ -17,6 +17,8 @@ public partial class CompareView : UserControl
 {
     public sealed record Pill(string Name, Brush Color, double Opacity, TextDecorationCollection? Decorations, string Tip);
     public sealed record Line(Brush Color, string Text, string Tip);
+    /// <summary>A question of the chat, shown as a tab when the chat has more than one.</summary>
+    public sealed record QuestionTab(string Text, string Tip, HistoryEntry Entry, bool IsCurrent);
 
     /// <summary>One card on the page. Its picture arrives later, once it has been looked up.</summary>
     public sealed class Row : INotifyPropertyChanged
@@ -59,6 +61,16 @@ public partial class CompareView : UserControl
     /// <summary>The question being compared (null = none yet).</summary>
     public HistoryEntry? Current => _entry;
 
+    /// <summary>Raised when a different question is shown, so Recent can highlight its chat.</summary>
+    public event Action<HistoryEntry?>? CurrentChanged;
+
+    /// <summary>Compares a chat: its newest question that has at least two answers.</summary>
+    public void ShowChat(Conversation chat)
+    {
+        var entries = chat.Entries.Reverse().ToList();
+        Show(entries.FirstOrDefault(e => AnswersOf(e).Count >= 2) ?? entries.FirstOrDefault());
+    }
+
     /// <summary>Compares the newest question that has at least two answers.</summary>
     public void ShowLatest()
     {
@@ -72,6 +84,7 @@ public partial class CompareView : UserControl
         _entry = entry;
         if (_entry != null) _entry.PropertyChanged += Entry_PropertyChanged;
         Render();
+        CurrentChanged?.Invoke(_entry);
     }
 
     // Answers that arrive while this page is open update it straight away.
@@ -94,6 +107,16 @@ public partial class CompareView : UserControl
         EmptyPanel.Visibility = Visibility.Collapsed;
         ResultPanel.Visibility = Visibility.Visible;
         QuestionText.Text = _entry.Prompt;
+
+        // A chat with follow-up questions gets a tab per question.
+        var chat = AppState.ChatOf(_entry);
+        var tabs = chat == null || chat.Entries.Count < 2
+            ? new List<QuestionTab>()
+            : chat.Entries.Select((e, i) => new QuestionTab(
+                $"Q{i + 1}  " + (e.Prompt.Length > 40 ? e.Prompt[..37].TrimEnd() + "…" : e.Prompt),
+                e.Prompt, e, e == _entry)).ToList();
+        QuestionTabs.ItemsSource = tabs;
+        QuestionTabs.Visibility = tabs.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
 
         var answers = AnswersOf(_entry);
         var sites = answers.Select(a => a.Site).ToList();
@@ -168,6 +191,11 @@ public partial class CompareView : UserControl
         else image.ContinueWith(t => { if (t.IsCompletedSuccessfully && t.Result != null) row.Image = t.Result; },
                                 TaskScheduler.FromCurrentSynchronizationContext());
         return row;
+    }
+
+    private void QuestionTab_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is QuestionTab { IsCurrent: false } tab) Show(tab.Entry);
     }
 
     private void Search_Click(object sender, RoutedEventArgs e)

@@ -110,6 +110,39 @@
                 <!-- Which question is being compared, and how much the AIs agree -->
                 <StackPanel DockPanel.Dock="Top" Margin="0,0,0,16">
                     <TextBlock Text="WHAT THE AIs AGREE ON" Style="{StaticResource SectionLabel}"/>
+                    <!-- One tab per question when the chat has follow-ups -->
+                    <ItemsControl x:Name="QuestionTabs" Margin="0,8,0,4" Visibility="Collapsed">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Click="QuestionTab_Click" ToolTip="{Binding Tip}" Cursor="Hand" Margin="0,0,6,6">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="Chip" CornerRadius="14" Padding="12,5" BorderThickness="1"
+                                                    Background="Transparent" BorderBrush="{DynamicResource CardBorder}">
+                                                <TextBlock x:Name="ChipText" Text="{Binding Text}" FontSize="12"
+                                                           Foreground="{DynamicResource TextMuted}"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="Chip" Property="Background" Value="{DynamicResource NavHover}"/>
+                                                </Trigger>
+                                                <DataTrigger Binding="{Binding IsCurrent}" Value="True">
+                                                    <Setter TargetName="Chip" Property="Background" Value="{DynamicResource AccentSoft}"/>
+                                                    <Setter TargetName="Chip" Property="BorderBrush" Value="{DynamicResource Accent}"/>
+                                                    <Setter TargetName="ChipText" Property="Foreground" Value="{DynamicResource AccentText}"/>
+                                                </DataTrigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                     <TextBlock x:Name="QuestionText" FontFamily="{StaticResource DisplayFont}" FontSize="21"
                                FontWeight="SemiBold" TextWrapping="Wrap" MaxHeight="60" TextTrimming="CharacterEllipsis"
                                Foreground="{DynamicResource TextPrimary}" Margin="0,4,0,0"/>

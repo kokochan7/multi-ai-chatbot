@@ -21,14 +21,27 @@ public partial class MainWindow : Window
 
         _recentView = CollectionViewSource.GetDefaultView(AppState.Conversations);
         _recentView.Filter = MatchesSearch;
+        // Pinned chats first, then the most recently used.
+        _recentView.SortDescriptions.Add(new SortDescription(nameof(Conversation.Pinned), ListSortDirection.Descending));
+        _recentView.SortDescriptions.Add(new SortDescription(nameof(Conversation.Time), ListSortDirection.Descending));
+        if (_recentView is ICollectionViewLiveShaping live && live.CanChangeLiveSorting)
+        {
+            live.LiveSortingProperties.Add(nameof(Conversation.Pinned));
+            live.LiveSortingProperties.Add(nameof(Conversation.Time));
+            live.IsLiveSorting = true;
+        }
         RecentList.ItemsSource = _recentView;
         AppState.Conversations.CollectionChanged += (_, _) => UpdateRecentEmpty();
         UpdateRecentEmpty();
 
-        // Keep the Recent highlight on whatever the History page is showing.
+        // Keep the Recent highlight on whatever the History or Compare page is showing.
         HistoryPage.CurrentChanged += entry =>
         {
             if (NavHistory.IsChecked == true) RecentList.SelectedItem = entry;
+        };
+        ComparePage.CurrentChanged += entry =>
+        {
+            if (NavCompare.IsChecked == true) RecentList.SelectedItem = entry == null ? null : AppState.ChatOf(entry);
         };
 
         HistoryPage.RefreshRequested = ChatPage.RefreshAnswersAsync;
@@ -104,7 +117,11 @@ public partial class MainWindow : Window
         if (sender == NavCompare && !_comparePicked) ComparePage.ShowLatest();
         _comparePicked = false;
         if (RecentList is null) return;
-        if (sender != NavHistory)
+        if (sender == NavCompare)
+        {
+            RecentList.SelectedItem = ComparePage.Current is { } compared ? AppState.ChatOf(compared) : null;
+        }
+        else if (sender != NavHistory)
         {
             RecentList.SelectedItem = null;
         }
@@ -116,17 +133,91 @@ public partial class MainWindow : Window
         }
     }
 
-    /// <summary>Opens the clicked recent question on the History page.</summary>
+    /// <summary>
+    /// Opens the clicked recent chat: on the Compare page when that's open, otherwise on History.
+    /// </summary>
     private void RecentList_Click(object sender, MouseButtonEventArgs e)
     {
-        if ((e.OriginalSource as FrameworkElement)?.DataContext is Conversation entry)
-            OpenInHistory(entry);
+        if (IsInsideTextBox(e.OriginalSource as DependencyObject)) return;
+        if ((e.OriginalSource as FrameworkElement)?.DataContext is Conversation entry && !entry.IsRenaming)
+            OpenChat(entry);
     }
 
     private void RecentList_KeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Enter && RecentList.SelectedItem is Conversation entry)
-            OpenInHistory(entry);
+        if (RecentList.SelectedItem is not Conversation entry || entry.IsRenaming) return;
+        if (e.Key == Key.Enter) OpenChat(entry);
+        else if (e.Key == Key.F2) entry.IsRenaming = true;
+    }
+
+    private void OpenChat(Conversation chat)
+    {
+        if (NavCompare.IsChecked == true)
+        {
+            ComparePage.ShowChat(chat);
+            RecentList.SelectedItem = chat;
+        }
+        else
+        {
+            OpenInHistory(chat);
+        }
+    }
+
+    private static bool IsInsideTextBox(DependencyObject? d)
+    {
+        while (d != null)
+        {
+            if (d is TextBox) return true;
+            d = d is System.Windows.Media.Visual or System.Windows.Media.Media3D.Visual3D
+                ? System.Windows.Media.VisualTreeHelper.GetParent(d)
+                : LogicalTreeHelper.GetParent(d);
+        }
+        return false;
+    }
+
+    // Right-click > Rename: edit the chat's name right in the Recent list.
+    private void RecentRename_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not Conversation chat) return;
+        foreach (var other in AppState.Conversations) other.IsRenaming = false;
+        chat.IsRenaming = true;
+    }
+
+    private void RenameBox_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (sender is not TextBox box || !box.IsVisible) return;
+        box.Text = (box.DataContext as Conversation)?.Title ?? "";
+        Dispatcher.InvokeAsync(() => { box.Focus(); box.SelectAll(); }, System.Windows.Threading.DispatcherPriority.Input);
+    }
+
+    private void RenameBox_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (sender is not TextBox { DataContext: Conversation chat } box) return;
+        if (e.Key == Key.Enter) { FinishRename(chat, box.Text); e.Handled = true; }
+        else if (e.Key == Key.Escape) { chat.IsRenaming = false; e.Handled = true; }
+    }
+
+    private void RenameBox_LostFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        if (sender is TextBox { DataContext: Conversation chat } box && chat.IsRenaming) FinishRename(chat, box.Text);
+    }
+
+    private static void FinishRename(Conversation chat, string text)
+    {
+        chat.IsRenaming = false;
+        var name = text.Trim();
+        // Clearing the name (or typing the first question again) goes back to using the first question.
+        var first = chat.Entries.Count > 0 ? chat.Entries[0].Prompt : "";
+        chat.CustomTitle = name.Length == 0 || name == first ? null : name;
+        AppState.SaveChats();
+    }
+
+    // Right-click > Pin to top / Unpin.
+    private void RecentPin_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not Conversation chat) return;
+        chat.Pinned = !chat.Pinned;
+        AppState.SaveChats();
     }
 
     /// <summary>Right-click > Delete chat on a Recent item: removes the chat, its answers and its pictures.</summary>
@@ -152,6 +243,8 @@ public partial class MainWindow : Window
             if (NavHistory.IsChecked == true) RecentList.SelectedItem = next;
         }
         if (comparedHere) ComparePage.ShowLatest();
+        if (NavCompare.IsChecked == true)
+            RecentList.SelectedItem = ComparePage.Current is { } c ? AppState.ChatOf(c) : null;
     }
 
     private void OpenInHistory(Conversation entry)
@@ -194,4 +287,14 @@ public partial class MainWindow : Window
         AppState.Settings.SidebarWidth = Math.Round(SidebarColumn.ActualWidth);
         AppState.SaveSettingsQuietly();
     }
+}
+
+/// <summary>Visible when false, collapsed when true.</summary>
+public sealed class InverseBoolToVisibility : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture) =>
+        value is true ? Visibility.Collapsed : Visibility.Visible;
+
+    public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture) =>
+        throw new NotSupportedException();
 }

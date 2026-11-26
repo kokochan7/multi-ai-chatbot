@@ -34,6 +34,23 @@ jobs:
           -p:Version=${{ env.APP_VERSION }}
           -o publish
 
+      # Start the app for 20 seconds and fail the build if it crashes while
+      # opening, so a broken build never becomes a release.
+      - name: Smoke test (app starts without crashing)
+        shell: pwsh
+        run: |
+          $log = Join-Path $env:LOCALAPPDATA 'MultiAIChatbot\crash.log'
+          if (Test-Path $log) { Remove-Item $log }
+          $p = Start-Process -FilePath 'publish\MultiAIChatbot.exe' -PassThru
+          Start-Sleep -Seconds 20
+          $crashed = (Test-Path $log) -and (Select-String -Path $log -Pattern 'Unhandled error' -Quiet)
+          $exited = $p.HasExited
+          if (-not $exited) { Stop-Process -Id $p.Id -Force }
+          if (Test-Path $log) { Get-Content $log }
+          if ($crashed) { Write-Error 'The app hit an unhandled error at startup (see crash.log above).'; exit 1 }
+          if ($exited -and $p.ExitCode -ne 0) { Write-Error "The app exited at startup with code $($p.ExitCode)."; exit 1 }
+          Write-Host 'App started and stayed open.'
+
       - name: Upload .exe
         uses: actions/upload-artifact@v4
         with:

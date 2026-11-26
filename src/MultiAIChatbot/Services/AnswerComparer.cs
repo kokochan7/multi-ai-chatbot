@@ -154,7 +154,7 @@ public static class AnswerComparer
             name = label.Groups["rest"].Value;
         name = IntroPrefix.Replace(name, "");
         // "an RGB-stripe WOLED, such as the ASUS ROG Swift PG27UCWM" -> the named example
-        var example = Regex.Match(name, @"(?:,\s*|\s)(?:such as|like|e\.g\.)\s+(?:the\s+)?(?<x>.+)$", RegexOptions.IgnoreCase);
+        var example = Regex.Match(name, @"(?:,\s*|\s)(?:such as|e\.g\.)\s+(?:the\s+)?(?<x>.+)$", RegexOptions.IgnoreCase);
         if (example.Success) name = example.Groups["x"].Value;
         return Tidy(name);
     }

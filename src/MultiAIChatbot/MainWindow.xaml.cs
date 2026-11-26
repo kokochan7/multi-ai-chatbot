@@ -21,15 +21,6 @@ public partial class MainWindow : Window
 
         _recentView = CollectionViewSource.GetDefaultView(AppState.Conversations);
         _recentView.Filter = MatchesSearch;
-        // Pinned chats first, then the most recently used.
-        _recentView.SortDescriptions.Add(new SortDescription(nameof(Conversation.Pinned), ListSortDirection.Descending));
-        _recentView.SortDescriptions.Add(new SortDescription(nameof(Conversation.Time), ListSortDirection.Descending));
-        if (_recentView is ICollectionViewLiveShaping live && live.CanChangeLiveSorting)
-        {
-            live.LiveSortingProperties.Add(nameof(Conversation.Pinned));
-            live.LiveSortingProperties.Add(nameof(Conversation.Time));
-            live.IsLiveSorting = true;
-        }
         RecentList.ItemsSource = _recentView;
         AppState.Conversations.CollectionChanged += (_, _) => UpdateRecentEmpty();
         UpdateRecentEmpty();
@@ -76,8 +67,11 @@ public partial class MainWindow : Window
 
     private void UpdateRecentEmpty()
     {
+        if (RecentEmpty is null || ClearAllButton is null) return;
         var hasHistory = AppState.Conversations.Count > 0;
-        var anyShown = _recentView is { IsEmpty: false };
+        bool anyShown;
+        try { anyShown = _recentView is { IsEmpty: false }; }
+        catch { anyShown = hasHistory; }
         RecentEmpty.Text = hasHistory ? "No matches." : "Your questions will show up here.";
         RecentEmpty.Visibility = anyShown ? Visibility.Collapsed : Visibility.Visible;
         ClearAllButton.Visibility = hasHistory ? Visibility.Visible : Visibility.Collapsed;
@@ -229,8 +223,7 @@ public partial class MainWindow : Window
     private void RecentPin_Click(object sender, RoutedEventArgs e)
     {
         if ((sender as FrameworkElement)?.DataContext is not Conversation chat) return;
-        chat.Pinned = !chat.Pinned;
-        AppState.SaveChats();
+        AppState.SetPinned(chat, !chat.Pinned);
     }
 
     /// <summary>Right-click > Delete chat on a Recent item: removes the chat, its answers and its pictures.</summary>

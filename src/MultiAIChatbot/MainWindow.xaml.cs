@@ -46,6 +46,11 @@ public partial class MainWindow : Window
 
         SettingsPage.ShowChatRequested += () => NavChat.IsChecked = true;
 
+        // Ctrl+F / F3 / Esc for "Search all AIs". Keys pressed inside a website arrive as KeyDown
+        // from the WebView2 control, so listen to both the preview and the normal key event.
+        PreviewKeyDown += Window_FindKeyDown;
+        AddHandler(KeyDownEvent, new KeyEventHandler(Window_FindKeyDown));
+
         SettingsPage.UpdateFound += version =>
         {
             UpdateBannerText.Text = $"Update to {version}";
@@ -135,6 +140,14 @@ public partial class MainWindow : Window
         if (IsInsideTextBox(e.OriginalSource as DependencyObject)) return;
         if ((e.OriginalSource as FrameworkElement)?.DataContext is Conversation entry && !entry.IsRenaming)
             OpenChat(entry);
+    }
+
+    private void Window_FindKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Handled || ChatPage is null || ChatPage.Visibility != Visibility.Visible) return;
+        // Esc while renaming a Recent chat belongs to the rename box, not the search bar.
+        if (e.Key == Key.Escape && Keyboard.FocusedElement is DependencyObject focused && !ChatPage.IsAncestorOf(focused)) return;
+        ChatPage.HandleFindKey(e);
     }
 
     private void RecentList_KeyDown(object sender, KeyEventArgs e)

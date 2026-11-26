@@ -154,7 +154,7 @@ public partial class MainWindow : Window
     {
         if (RecentList.SelectedItem is not Conversation entry || entry.IsRenaming) return;
         if (e.Key == Key.Enter) OpenChat(entry);
-        else if (e.Key == Key.F2) entry.IsRenaming = true;
+        else if (e.Key == Key.F2) StartRename(entry);
     }
 
     private void OpenChat(Conversation chat)
@@ -186,27 +186,48 @@ public partial class MainWindow : Window
     private void RecentRename_Click(object sender, RoutedEventArgs e)
     {
         if ((sender as FrameworkElement)?.DataContext is not Conversation chat) return;
+        StartRename(chat);
+    }
+
+    /// <summary>Starts editing a chat's name in the Recent list and puts the cursor in the box.</summary>
+    private void StartRename(Conversation chat)
+    {
         foreach (var other in AppState.Conversations) other.IsRenaming = false;
         chat.IsRenaming = true;
+        Dispatcher.InvokeAsync(() =>
+        {
+            if (RecentList.ItemContainerGenerator.ContainerFromItem(chat) is not DependencyObject container) return;
+            if (FindChild<TextBox>(container) is not { } box) return;
+            box.Text = chat.Title;
+            box.Focus();
+            box.SelectAll();
+        }, System.Windows.Threading.DispatcherPriority.Loaded);
     }
 
-    private void RenameBox_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+    private static T? FindChild<T>(DependencyObject parent) where T : DependencyObject
     {
-        if (sender is not TextBox box || !box.IsVisible) return;
-        box.Text = (box.DataContext as Conversation)?.Title ?? "";
-        Dispatcher.InvokeAsync(() => { box.Focus(); box.SelectAll(); }, System.Windows.Threading.DispatcherPriority.Input);
+        for (var i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            var child = System.Windows.Media.VisualTreeHelper.GetChild(parent, i);
+            if (child is T found) return found;
+            if (FindChild<T>(child) is { } deeper) return deeper;
+        }
+        return null;
     }
 
-    private void RenameBox_KeyDown(object sender, KeyEventArgs e)
+    // Enter saves the new name, Esc cancels (the rename box sits inside the Recent list).
+    private void RecentList_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (sender is not TextBox { DataContext: Conversation chat } box) return;
-        if (e.Key == Key.Enter) { FinishRename(chat, box.Text); e.Handled = true; }
-        else if (e.Key == Key.Escape) { chat.IsRenaming = false; e.Handled = true; }
+        if (e.OriginalSource is not TextBox { DataContext: Conversation chat } box || !chat.IsRenaming) return;
+        if (e.Key == Key.Enter) { FinishRename(chat, box.Text); RecentList.Focus(); e.Handled = true; }
+        else if (e.Key == Key.Escape) { chat.IsRenaming = false; RecentList.Focus(); e.Handled = true; }
     }
 
-    private void RenameBox_LostFocus(object sender, KeyboardFocusChangedEventArgs e)
+    // Clicking elsewhere saves the new name.
+    private void RecentList_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
     {
-        if (sender is TextBox { DataContext: Conversation chat } box && chat.IsRenaming) FinishRename(chat, box.Text);
+        if (e.OriginalSource is TextBox { DataContext: Conversation chat } box && chat.IsRenaming)
+            FinishRename(chat, box.Text);
     }
 
     private static void FinishRename(Conversation chat, string text)

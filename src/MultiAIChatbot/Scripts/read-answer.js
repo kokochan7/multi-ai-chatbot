@@ -42,6 +42,16 @@
     if (!nodes.length && withText.length)
       nodes = withText.filter(n => !withText.some(o => o !== n && o.contains(n)));   // outermost only
   }
+  // ChatGPT's newer layout builds answers from components (data-d-component) with no answer
+  // marker around them: the components side by side under one parent make up one answer.
+  if (!nodes.length) {
+    const parts = qsa('[data-d-component]').filter(hasText);
+    const outer = parts.filter(n => !parts.some(o => o !== n && o.contains(n)));
+    const groups = [];
+    outer.forEach(n => { const p = n.parentElement; if (p && !groups.includes(p)) groups.push(p); });
+    nodes = groups.filter(g => !groups.some(o => o !== g && o.contains(g)));
+    diag.push('components=' + outer.length + '/' + nodes.length);
+  }
   const index = __INDEX__;
   const last = index >= 0 ? nodes[index] : nodes[nodes.length - 1];
   const streaming = qs(
@@ -52,7 +62,11 @@
   const CONTENT = "[data-assistant-markdown-root], .standard-markdown, .progressive-markdown, .markdown, .prose, [class*='markdown']";
   const SKIP = "button, svg, style, script, noscript, img, picture, video, canvas, input, textarea, select, " +
     "[aria-hidden='true'], .sr-only, [role='button'], [role='status'], [role='tooltip'], [role='toolbar'], " +
-    "[data-testid*='citation'], [class*='citation'], source-footnote, sources-carousel, .katex-mathml";
+    "[data-testid*='citation'], [class*='citation'], source-footnote, sources-carousel, .katex-mathml, [class*='mapboxgl']";
+  // In ChatGPT's component layout a listed place or product is a button with its name in bold;
+  // keep those (other buttons are the site's own controls).
+  const componentAnswer = !!last && !!last.querySelector('[data-d-component]');
+  const keepButton = el => componentAnswer && el.tagName === 'BUTTON' && !!el.querySelector('strong, b');
 
   const isHidden = el => {
     const s = getComputedStyle(el);
@@ -111,8 +125,9 @@
     if (node.nodeType === 3) return inPre ? node.textContent : node.textContent.replace(/\s+/g, ' ');
     if (node.nodeType !== 1) return '';
     const el = node;
-    if (el.matches(SKIP) || isHidden(el) || isChip(el)) return '';
+    if ((el.matches(SKIP) && !keepButton(el)) || isHidden(el) || isChip(el)) return '';
     const tag = el.tagName;
+    if (tag === 'BUTTON') return '\n- ' + Array.from(el.childNodes).map(c => convert(c, false, depth).trim()).filter(t => t).join(' ').replace(/\s+/g, ' ') + '\n';   // a kept place/product
     switch (tag) {
       case 'BR': return '\n';
       case 'HR': return '\n\n---\n\n';

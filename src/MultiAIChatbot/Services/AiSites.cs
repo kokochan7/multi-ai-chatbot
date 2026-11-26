@@ -21,7 +21,8 @@ public static class AiSites
         {
             "li[data-message-role='assistant']", "[data-message-author-role='assistant']", "article[data-turn='assistant']",
             // Fallbacks for layouts not seen yet (Temporary Chat, new designs): any assistant turn, then the answer text itself.
-            "[data-turn='assistant']", "[data-assistant-markdown-root]", ".agent-turn .markdown", ".markdown.prose",
+            "[data-turn='assistant']", "[data-assistant-markdown-root]", "section[aria-label='DIL content']",
+            ".agent-turn .markdown", ".markdown.prose",
         });
 
     public static readonly SiteSelectors Claude = new(

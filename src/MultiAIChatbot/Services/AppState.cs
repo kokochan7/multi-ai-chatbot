@@ -196,7 +196,8 @@ public static class AppState
                 foreach (var e in g.OrderBy(e => e.Time)) chat.Entries.Add(e);
                 return chat;
             })
-            .OrderByDescending(c => c.Time);
+            .OrderByDescending(c => c.Time)
+            .ToList();
         var info = Load<Dictionary<Guid, ChatInfo>>(ChatsFile) ?? new();
         foreach (var chat in chats)
         {
@@ -205,8 +206,26 @@ public static class AppState
                 chat.CustomTitle = i.Title;
                 chat.Pinned = i.Pinned;
             }
-            Conversations.Add(chat);
         }
+        // Pinned chats first, then the most recently used.
+        foreach (var chat in chats.OrderByDescending(c => c.Pinned)) Conversations.Add(chat);
+    }
+
+    /// <summary>Pins or unpins a chat and moves it to its place in Recent.</summary>
+    public static void SetPinned(Conversation chat, bool pinned)
+    {
+        chat.Pinned = pinned;
+        PlaceChat(chat);
+        SaveChats();
+    }
+
+    /// <summary>Moves a chat to the top of its group: pinned chats first, then the rest.</summary>
+    private static void PlaceChat(Conversation chat)
+    {
+        var from = Conversations.IndexOf(chat);
+        if (from < 0) return;
+        var target = chat.Pinned ? 0 : Conversations.Count(c => c.Pinned && c != chat);
+        if (from != target) Conversations.Move(from, target);
     }
 
     /// <summary>Saves the chats' names and pins (right-click > Rename / Pin on Recent).</summary>
@@ -236,12 +255,11 @@ public static class AppState
         if (chat == null)
         {
             chat = new Conversation { Id = conversationId };
-            Conversations.Insert(0, chat);
+            Conversations.Insert(Conversations.Count(c => c.Pinned), chat);
         }
         else
         {
-            var index = Conversations.IndexOf(chat);
-            if (index > 0) Conversations.Move(index, 0);
+            PlaceChat(chat);
         }
         chat.Entries.Add(entry);
 

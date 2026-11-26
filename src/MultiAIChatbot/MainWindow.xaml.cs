@@ -129,6 +129,31 @@ public partial class MainWindow : Window
             OpenInHistory(entry);
     }
 
+    /// <summary>Right-click > Delete chat on a Recent item: removes the chat, its answers and its pictures.</summary>
+    private void RecentDelete_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not Conversation chat) return;
+        var title = chat.Title.Length > 80 ? chat.Title[..77].TrimEnd() + "…" : chat.Title;
+        var answer = MessageBox.Show(this,
+            $"Delete \"{title}\"?\n\nIts questions, answers and pictures will be removed from this PC.",
+            "Delete chat", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+        if (answer != MessageBoxResult.Yes) return;
+
+        var index = AppState.Conversations.IndexOf(chat);
+        var wasOpen = HistoryPage.Current == chat;
+        var comparedHere = ComparePage.Current is { } compared && chat.Entries.Contains(compared);
+        AppState.DeleteConversation(chat);
+
+        var chats = AppState.Conversations;
+        if (wasOpen)
+        {
+            var next = chats.Count == 0 ? null : chats[Math.Clamp(index, 0, chats.Count - 1)];
+            HistoryPage.Show(next);
+            if (NavHistory.IsChecked == true) RecentList.SelectedItem = next;
+        }
+        if (comparedHere) ComparePage.ShowLatest();
+    }
+
     private void OpenInHistory(Conversation entry)
     {
         HistoryPage.Show(entry);

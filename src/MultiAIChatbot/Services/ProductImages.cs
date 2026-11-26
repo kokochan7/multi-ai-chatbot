@@ -49,6 +49,50 @@ public static class ProductImages
         return Memory.GetOrAdd(key, k => Task.Run(() => LoadAsync(k)));
     }
 
+    /// <summary>
+    /// Deletes the saved pictures for the items the AIs agreed on in these questions,
+    /// so deleting a chat also removes the pictures it brought in.
+    /// </summary>
+    public static void Forget(IEnumerable<HistoryEntry> entries)
+    {
+        foreach (var entry in entries.ToList())
+        {
+            List<AgreedItem> items;
+            try
+            {
+                var answers = AppState.Settings.ColumnOrder
+                    .Select(k => (Site: k, Answer: entry.AnswerFor(k)))
+                    .Where(a => !string.IsNullOrWhiteSpace(a.Answer))
+                    .ToList();
+                if (answers.Count < 2) continue;
+                items = AnswerComparer.Compare(answers);
+            }
+            catch { continue; }
+
+            foreach (var item in items.Where(i => i.Count >= 2))
+            {
+                var key = item.Name.Trim();
+                Memory.TryRemove(key, out _);
+                var file = Path.Combine(CacheFolder, Hash(key));
+                TryDelete(file);
+                TryDelete(file + ".none");
+            }
+        }
+    }
+
+    /// <summary>Deletes every saved picture (used when all history is cleared).</summary>
+    public static void ForgetAll()
+    {
+        Memory.Clear();
+        try { if (Directory.Exists(CacheFolder)) Directory.Delete(CacheFolder, recursive: true); }
+        catch { /* a picture still being written; it's harmless */ }
+    }
+
+    private static void TryDelete(string path)
+    {
+        try { if (File.Exists(path)) File.Delete(path); } catch { }
+    }
+
     private static async Task<ImageSource?> LoadAsync(string name)
     {
         try

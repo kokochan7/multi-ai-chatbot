@@ -196,9 +196,10 @@ public static class AppState
 
     public static void SaveHistory() => Save(HistoryFile, History.ToList());
 
-    /// <summary>Deletes a whole chat with all its questions and answers.</summary>
+    /// <summary>Deletes a whole chat with all its questions, answers and the pictures found for it.</summary>
     public static void DeleteConversation(Conversation chat)
     {
+        ProductImages.Forget(chat.Entries);
         foreach (var entry in chat.Entries) History.Remove(entry);
         Conversations.Remove(chat);
         SaveHistory();
@@ -206,6 +207,7 @@ public static class AppState
 
     public static void ClearHistory()
     {
+        ProductImages.ForgetAll();
         History.Clear();
         Conversations.Clear();
         SaveHistory();

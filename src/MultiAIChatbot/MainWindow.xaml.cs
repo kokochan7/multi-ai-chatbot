@@ -22,6 +22,7 @@ public partial class MainWindow : Window
         _recentView = CollectionViewSource.GetDefaultView(AppState.Conversations);
         _recentView.Filter = MatchesSearch;
         RecentList.ItemsSource = _recentView;
+        RecentList.ContextMenu = _recentMenu;
         AppState.Conversations.CollectionChanged += (_, _) => UpdateRecentEmpty();
         UpdateRecentEmpty();
 
@@ -180,6 +181,37 @@ public partial class MainWindow : Window
                 : LogicalTreeHelper.GetParent(d);
         }
         return false;
+    }
+
+    private readonly ContextMenu _recentMenu = new();
+
+    /// <summary>Fills the right-click menu for the chat under the mouse (nothing for empty space).</summary>
+    private void RecentList_ContextMenuOpening(object sender, ContextMenuEventArgs e)
+    {
+        if ((e.OriginalSource as FrameworkElement)?.DataContext is not Conversation chat)
+        {
+            e.Handled = true;
+            return;
+        }
+        _recentMenu.SetResourceReference(Control.BackgroundProperty, "CardBackground");
+        _recentMenu.SetResourceReference(Control.ForegroundProperty, "TextPrimary");
+        _recentMenu.SetResourceReference(Control.BorderBrushProperty, "CardBorder");
+        _recentMenu.Items.Clear();
+        _recentMenu.Items.Add(MenuItemFor("Rename", "\uE8AC", chat, RecentRename_Click));
+        _recentMenu.Items.Add(MenuItemFor(chat.PinMenuText, "\uE718", chat, RecentPin_Click));
+        _recentMenu.Items.Add(new Separator());
+        var delete = MenuItemFor("Delete chat", "\uE74D", chat, RecentDelete_Click);
+        delete.SetResourceReference(Control.ForegroundProperty, "ErrorText");
+        _recentMenu.Items.Add(delete);
+    }
+
+    private MenuItem MenuItemFor(string header, string glyph, Conversation chat, RoutedEventHandler click)
+    {
+        var icon = new TextBlock { Text = glyph, FontSize = 13 };
+        icon.SetResourceReference(TextBlock.FontFamilyProperty, "IconFont");
+        var item = new MenuItem { Header = header, Icon = icon, DataContext = chat };
+        item.Click += click;
+        return item;
     }
 
     // Right-click > Rename: edit the chat's name right in the Recent list.

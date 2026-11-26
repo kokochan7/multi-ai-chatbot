@@ -97,7 +97,8 @@
                 <!-- Recent questions. Clicking one opens it in History with all its answers. -->
                 <Grid Margin="0,0,0,10">
                     <ListBox x:Name="RecentList" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                             PreviewMouseLeftButtonUp="RecentList_Click" KeyDown="RecentList_KeyDown">
+                             PreviewMouseLeftButtonUp="RecentList_Click" KeyDown="RecentList_KeyDown"
+                             PreviewKeyDown="RecentList_PreviewKeyDown" LostKeyboardFocus="RecentList_LostKeyboardFocus">
                         <ListBox.Resources>
                             <BooleanToVisibilityConverter x:Key="BoolToVis"/>
                             <local:InverseBoolToVisibility x:Key="InverseBoolToVis"/>
@@ -146,11 +147,9 @@
                                         <TextBlock Text="{Binding Title}" FontSize="13" TextTrimming="CharacterEllipsis"
                                                    Foreground="{DynamicResource TextPrimary}"/>
                                     </DockPanel>
-                                    <!-- Shown while renaming: Enter saves, Esc cancels -->
+                                    <!-- Shown while renaming: Enter saves, Esc cancels. No event handlers in this template: they crash WPF here; the list handles them. -->
                                     <TextBox Text="{Binding Title, Mode=OneWay}" FontSize="13" Padding="4,1" Margin="-5,-2"
-                                             Visibility="{Binding IsRenaming, Converter={StaticResource BoolToVis}}"
-                                             IsVisibleChanged="RenameBox_IsVisibleChanged" KeyDown="RenameBox_KeyDown"
-                                             LostKeyboardFocus="RenameBox_LostFocus"/>
+                                             Visibility="{Binding IsRenaming, Converter={StaticResource BoolToVis}}"/>
                                 </Grid>
                             </DataTemplate>
                         </ListBox.ItemTemplate>

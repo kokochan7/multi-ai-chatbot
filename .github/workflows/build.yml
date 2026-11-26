@@ -34,6 +34,34 @@ jobs:
           -p:Version=${{ env.APP_VERSION }}
           -o publish
 
+      # Start the app for 20 seconds and fail the build if it crashes while
+      # opening, so a broken build never becomes a release.
+      - name: Smoke test (app starts without crashing)
+        shell: pwsh
+        run: |
+          $log = Join-Path $env:LOCALAPPDATA 'MultiAIChatbot\crash.log'
+          if (Test-Path $log) { Remove-Item $log }
+          # Seed two saved chats (one renamed and pinned) so Recent, its item template
+          # and the Compare page all have something to show.
+          $dir = Join-Path $env:LOCALAPPDATA 'MultiAIChatbot'
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+          $c1 = '11111111-1111-1111-1111-111111111111'; $c2 = '22222222-2222-2222-2222-222222222222'
+          $answer = "1. **Alpha One X100** - great`n2. **Beta Two Y200** - good"
+          @(
+            @{ Id = [guid]::NewGuid(); ConversationId = $c1; Time = (Get-Date).ToString('o'); Prompt = 'best test gadget'; ChatGpt = $answer; Claude = $answer; Gemini = $answer },
+            @{ Id = [guid]::NewGuid(); ConversationId = $c2; Time = (Get-Date).AddHours(-1).ToString('o'); Prompt = 'second chat'; ChatGpt = 'hi'; Claude = 'hi'; Gemini = 'hi' }
+          ) | ConvertTo-Json -Depth 3 | Set-Content (Join-Path $dir 'history.json')
+          "{ `"$c2`": { `"Title`": `"Renamed chat`", `"Pinned`": true } }" | Set-Content (Join-Path $dir 'chats.json')
+          $p = Start-Process -FilePath 'publish\MultiAIChatbot.exe' -PassThru
+          Start-Sleep -Seconds 20
+          $crashed = (Test-Path $log) -and (Select-String -Path $log -Pattern 'Unhandled error' -Quiet)
+          $exited = $p.HasExited
+          if (-not $exited) { Stop-Process -Id $p.Id -Force }
+          if (Test-Path $log) { Get-Content $log }
+          if ($crashed) { Write-Error 'The app hit an unhandled error at startup (see crash.log above).'; exit 1 }
+          if ($exited -and $p.ExitCode -ne 0) { Write-Error "The app exited at startup with code $($p.ExitCode)."; exit 1 }
+          Write-Host 'App started and stayed open.'
+
       - name: Upload .exe
         uses: actions/upload-artifact@v4
         with:
